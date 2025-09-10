@@ -24,3 +24,27 @@ export function cartItemCount() {
 export function findItemInCart(cart, productId) {
   return cart.find(item => item.id === String(productId));
 }
+
+
+// added here before real debuggin started
+
+// Add to cartModule.js
+/*
+let operationInProgress = false;
+
+export function safeCartOperation(operation) {
+    if (operationInProgress) {
+        return Promise.reject(new Error('Operation in progress'));
+    }
+    
+    operationInProgress = true;
+    try {
+        const result = operation();
+        return Promise.resolve(result);
+    } catch (error) {
+        return Promise.reject(error);
+    } finally {
+        setTimeout(() => { operationInProgress = false; }, 50);
+    }
+}
+*/

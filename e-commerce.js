@@ -1681,30 +1681,8 @@ function initRecommendationsEngine() {
 
     // ... keep your existing listener code ...
 
-// === ADD THIS TO YOUR EXISTING EVENT HANDLERS ===
-document.addEventListener('click', function(e) {
-  // Handle recommendation add-to-cart buttons
-  const addCartBtn = e.target.closest('.recommendation-cart-btn');
-  if (addCartBtn) {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    const productId = addCartBtn.dataset.id;
-    if (productId && typeof addToCart === 'function') {
-      addToCart(productId);
-      
-      // Visual feedback
-      addCartBtn.innerHTML = 'Adding...';
-      addCartBtn.style.background = 'var(--success)';
-      setTimeout(() => {
-        addCartBtn.innerHTML = 'Add to Cart';
-        addCartBtn.style.background = '';
-      }, 1000);
-    }
-    return;
-  }
-}, true); // Use capture phase
 
+    
   }
 
   // --- FIXED: Event tracking with safety checks ---
