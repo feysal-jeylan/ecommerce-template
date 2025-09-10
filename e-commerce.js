@@ -16,22 +16,42 @@ const money = c => '$' + (c / 100).toFixed(2);
 // Initialize inventory management
 const inventoryManager = initInventoryManagement();
 
-// ===== SAFE GLOBAL EXPOSURE =====
-// Make sure tracking functions are available globally without conflicts
-if (typeof window.trackProductView === 'undefined') {
-  window.trackProductView = (productId) => {
-    if (recommendationsEngine && recommendationsEngine.trackProductView) {
-      recommendationsEngine.trackProductView(productId);
+// ===== SAFE GLOBAL API EXPOSURE =====
+const GlobalAPI = {
+    trackProductView: (productId) => {
+        if (recommendationsEngine && recommendationsEngine.trackProductView) {
+            recommendationsEngine.trackProductView(productId);
+        }
+    },
+    
+    trackAddedToCart: (productId) => {
+        if (recommendationsEngine && recommendationsEngine.trackAddedToCart) {
+            recommendationsEngine.trackAddedToCart(productId);
+        }
+    },
+    
+    addToCart: async (productId, quantity = 1) => {
+        try {
+            const success = await addToCart(productId, quantity);
+            if (success) {
+                GlobalAPI.trackAddedToCart(productId);
+                if (typeof floatingCart !== 'undefined' && floatingCart.openCartSidebar) {
+                    floatingCart.openCartSidebar();
+                }
+                showToast('Added to cart ✓');
+            }
+            return success;
+        } catch (error) {
+            console.warn('Add to cart failed:', error.message);
+            showToast(error.message);
+            return false;
+        }
     }
-  };
-}
+};
 
-if (typeof window.trackAddedToCart === 'undefined') {
-  window.trackAddedToCart = (productId) => {
-    if (recommendationsEngine && recommendationsEngine.trackAddedToCart) {
-      recommendationsEngine.trackAddedToCart(productId);
-    }
-  };
+// Safe global exposure - only set if doesn't exist
+if (typeof window.swiftbuyAPI === 'undefined') {
+    window.swiftbuyAPI = GlobalAPI;
 }
 
 
