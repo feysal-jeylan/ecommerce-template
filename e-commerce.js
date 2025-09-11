@@ -15,6 +15,8 @@ const money = c => '$' + (c / 100).toFixed(2);
 
 // Initialize inventory management
 const inventoryManager = initInventoryManagement();
+// Initialize cart functionality
+setupCartFunctionality();
 
 // ===== SAFE GLOBAL API EXPOSURE =====
 const GlobalAPI = {
@@ -147,69 +149,11 @@ function renderProducts(list) {
   productGrid.innerHTML = arr.map(createProductHTML).join('');
 }
 
-// Enhanced addToCart function - SIMPLE FIX
-function enhanceAddToCart() {
-  // Store the ORIGINAL function safely
-  const originalAddToCart = function(productId) {
-    const cart = loadCart();
-    const idStr = String(productId);
-    const existing = cart.find(i => i.id === idStr);
-
-    if (existing) {
-      existing.quantity = (existing.quantity || 0) + 1;
-    } else {
-      const p = products.find(x => x.id === idStr);
-      if (!p) return console.warn('Product not found for id', productId);
-      cart.push({
-        id: p.id,
-        name: p.name,
-        price_cents: cents(p.price),
-        quantity: 1,
-        image: p.image
-      });
-    }
-
-   // REPLACE saveCart(cart); WITH THIS:
-saveCartWithTracking(cart);
-    showToast('Added to cart ✓');
-    if (typeof floatingCart !== 'undefined' && floatingCart.openCartSidebar) {
-      floatingCart.openCartSidebar();
-    }
-  };
-
-  // Now override the global function
-  window.addToCart = function(productId) {
-    // Get fresh inventory data
-    const inventory = loadInventory();
-    const productStock = inventory[productId]?.stock || 0;
-    
-    if (productStock === 0) {
-      showToast('Sorry, this product is out of stock!');
-      return false;
-    }
-    
-    if (productStock <= inventory[productId]?.lowStockThreshold) {
-      showToast(`Low stock! Only ${productStock} item${productStock > 1 ? 's' : ''} left.`, [], 3000);
-    }
-    
-    // Update stock FIRST
-    if (updateStock(productId, 1)) {
-      // THEN call the ORIGINAL function
-      originalAddToCart(productId);
-      
-      // Refresh UI after a short delay
-      setTimeout(() => {
-        if (typeof refreshInventoryUI === 'function') {
-          refreshInventoryUI();
-        }
-      }, 50);
-      return true;
-    }
-    
-    return false;
-  };
+// Remove the entire enhanceAddToCart function and replace with:
+function setupCartFunctionality() {
+    // This function is now handled by the global API
+    console.log('Cart functionality setup complete - using atomic operations');
 }
-
 // === ADD THIS NEW FUNCTION ===
 function saveCartWithTracking(cart) {
   // Track newly added items
@@ -225,26 +169,31 @@ function saveCartWithTracking(cart) {
   saveCart(cart);
 }
 
-productGrid.addEventListener('click', (e) => {
+// the updated one
+
+productGrid.addEventListener('click', async (e) => {
   const btn = e.target.closest('.add-to-cart');
   if (btn) {
     const id = btn.dataset.id;
     btn.disabled = true;
-    addToCart(id);
+    
+    // FIXED: Add the missing await call
+    await window.swiftbuyAPI.addToCart(id);
+    
     setTimeout(() => btn.disabled = false, 400);
     return; // Stop here for add-to-cart clicks
   }
   
-  // === ADD THIS TRACKING CODE ===
+  // === KEEP EXISTING TRACKING CODE ===
   const productCard = e.target.closest('.product-container');
   if (productCard && !e.target.closest('.add-to-cart')) {
     const productId = productCard.dataset.id;
     const product = products.find(p => p.id === productId);
     
     if (product) {
-      // Track product view
-      if (typeof trackProductView === 'function') {
-        trackProductView(productId);
+      // Track product view - FIXED: use swiftbuyAPI instead of global function
+      if (typeof window.swiftbuyAPI !== 'undefined' && typeof window.swiftbuyAPI.trackProductView === 'function') {
+        window.swiftbuyAPI.trackProductView(productId);
       }
       // Open quick view
       if (typeof openQuickView === 'function') {
@@ -253,6 +202,7 @@ productGrid.addEventListener('click', (e) => {
     }
   }
 });
+    // update ended up here
 function debounce(func, wait) {
   let timeout;
   return function executedFunction(...args) {
@@ -634,65 +584,30 @@ function openQuickView(product) {
   }
 
 // FIXED: Setup modal add to cart - NO DOUBLE INVENTORY REDUCTION
-  function setupModalAddToCart() {
+function setupModalAddToCart() {
     const addToCartBtn = document.getElementById('quickview-addtocart');
     
-    addToCartBtn.addEventListener('click', () => {
-      if (!currentProduct) return;
-      
-      // PROPER inventory check through inventoryManager
-      if (typeof inventoryManager === 'undefined') {
-        showToast('Inventory system not ready yet');
-        return;
-      }
-      
-      const inventory = inventoryManager.loadInventory();
-      const productStock = inventory[currentProduct.id]?.stock || 0;
-      const quantity = parseInt(quantityInput.value);
-      
-      if (productStock === 0) {
-        showToast('Sorry, this product is out of stock!');
-        return;
-      }
-      
-      // Validate we have enough stock for the ENTIRE quantity
-      if (productStock < quantity) {
-        showToast(`Only ${productStock} item${productStock > 1 ? 's' : ''} available!`);
-        return;
-      }
-      
-      // FIX: Update inventory ONCE for the entire quantity
-      inventoryManager.updateStock(currentProduct.id, quantity);
-      
-      // FIX: Use cartModule's addItemToCart instead of looping addToCart
-      // This adds all items at once without individual inventory calls
-      const cart = loadCart();
-      const existingItem = cart.find(item => item.id === currentProduct.id);
-      
-      if (existingItem) {
-        existingItem.quantity += quantity;
-      } else {
-        cart.push({
-          id: currentProduct.id,
-          name: currentProduct.name,
-          price_cents: cents(currentProduct.price),
-          quantity: quantity,
-          image: currentProduct.image
-        });
-      }
-      
-      saveCart(cart);
-      showToast(`Added ${quantity} item${quantity > 1 ? 's' : ''} to cart ✓`);
-      
-      // Refresh UI
-      setTimeout(() => {
-        if (typeof inventoryManager.refreshInventoryUI === 'function') {
-          inventoryManager.refreshInventoryUI();
+    addToCartBtn.addEventListener('click', async () => {
+        if (!currentProduct) return;
+        
+        const quantity = parseInt(quantityInput.value);
+        const success = await window.swiftbuyAPI.addToCart(currentProduct.id, quantity);
+        
+        if (success) {
+            showToast(`Added ${quantity} item${quantity > 1 ? 's' : ''} to cart ✓`);
+            setTimeout(() => {
+                if (typeof inventoryManager !== 'undefined' && inventoryManager.refreshInventoryUI) {
+                    inventoryManager.refreshInventoryUI();
+                }
+                closeQuickView();
+            }, 500);
         }
-        closeQuickView();
-      }, 500);
     });
-  }
+}
+
+// update one is till here for setup modal
+
+
   // Attach click event to all product cards
   function attachQuickViewListeners() {
     document.addEventListener('click', (e) => {
@@ -1330,29 +1245,32 @@ function saveInventory(inventory) {
     const item = inventory[productId];
     return item && item.stock > 0 && item.stock <= item.lowStockThreshold;
   }
-  
+  // update start here!
   // Update stock level (when items are sold)
-  function updateStock(productId, quantity) {
-    const inventory = loadInventory();
-    if (inventory[productId]) {
-      inventory[productId].stock = Math.max(0, inventory[productId].stock - quantity);
-      saveInventory(inventory);
-      return true;
-    }
-    return false;
-  }
-  
-  // Add this function to your inventory manager
-function restockProduct(productId, quantity) {
-  const inventory = loadInventory();
-  if (inventory[productId]) {
-    inventory[productId].stock += quantity;
-    saveInventory(inventory);
-    return true;
-  }
-  return false;
+function updateStock(productId, quantity) {
+    return executeAtomicOperation(() => {
+        const inventory = loadInventory();
+        if (inventory[productId]) {
+            inventory[productId].stock = Math.max(0, inventory[productId].stock - quantity);
+            saveInventory(inventory);
+            return true;
+        }
+        return false;
+    });
 }
-  
+
+function restockProduct(productId, quantity) {
+    return executeAtomicOperation(() => {
+        const inventory = loadInventory();
+        if (inventory[productId]) {
+            inventory[productId].stock += quantity;
+            saveInventory(inventory);
+            return true;
+        }
+        return false;
+    });
+}
+// update ended
   // Add stock badges to product cards
   function addStockBadges() {
     const productCards = document.querySelectorAll('.product-container');
