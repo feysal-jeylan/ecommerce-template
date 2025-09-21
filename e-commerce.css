@@ -421,6 +421,8 @@ a:focus-visible {
   transition: transform .16s ease, box-shadow .16s ease;
   position:relative;
 }
+
+
 .product-container:hover{transform:translateY(-6px);box-shadow:0 12px 36px rgba(2,6,23,0.08)}
 
 .product-image{
@@ -576,6 +578,9 @@ a:focus-visible {
   transition: all 0.3s ease;
 }
 
+quickveiw-modal .wishlist-button {
+  z-index: 1000 !important;
+}
 .quickview-modal.active {
   opacity: 1;
   visibility: visible;
@@ -996,6 +1001,8 @@ a:focus-visible {
   border: 2px solid #e5e7eb;
   width: 48px;
   height: 48px;
+  z-index: 100;
+  pointer-events: auto !important;
   border-radius: 10px;
   cursor: pointer;
   transition: all 0.3s ease;
