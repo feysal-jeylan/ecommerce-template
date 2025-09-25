@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title> Learn JavaScript</title>
+  </head>
+  <body>
+    <script>
+    
+// While Loop
+
+    var y = 1; // when to start 
+    while ( y <= 1000) { // when to stop
+      console.log(y + "mississipi!");
+      var y = y + 1; // how to get the next item
+      
+    }
+
+    /* three piecds of information that any loop should have:
+    1.  WHEN TO START: The code that sets up the loop - defining the startint value of a varaible for instance.
+    2.  WHEN T STOP: The logical condition to test whether the loop should continue.
+    3.  HO TO GET TO THE NEXT ITEM: The incrementing or decrementint step- for example x = x * 3 or x = x - 1
+
+    */
+
+    let x = 10;
+    while (x <= 25) {
+      console.log('Printing out x =' + x);
+      x = x + 2;
+    }
+
+    let num = 1;
+    while (num <= 100) {
+      if (num % 15 === 0) {
+        console.log(num + " FizzBuzz");
+      }
+      else if (num % 3 === 0) {
+        console.log(num + " Fizz");
+      }
+      else if ( num % 5) {
+        console.log(num + " Buzz");
+      }
+      else {
+        console.log(num + " not");
+      }
+       num = num + 1;
+    }
+
+    let song = 99;
+    while (song >= 1) {
+      console.log(song + " bottles of juice on the wall! " + song + " bottles of juice! Take one down, pass it around...");
+      song = song - 1;
+    }
+
+    let t = 60;
+    while (t >= 0) {
+      if (t > 50 ) {
+        console.log("T-" + t + " seconds");
+      }
+      else if ( t === 50 ) {
+        console.log("Orbiter transfers fromo ground to internal power");
+      }
+      else if (t > 31) {
+        console.log("T-" + t + " seconds");
+      }
+      else if (t === 31) {
+        console.log("Ground launch sequencer is go for auto sequence start");
+      }
+      else if (t > 16) {
+        console.log("T-" + t + " seconds");
+      }
+      else if ( t === 16 ) {
+        console.log("Activate launch pad sound suppression system");
+      }
+      else if (t > 10) {
+        console.log("T-" + t + " seconds");
+      }
+      else if (t === 10) {
+        console.log("Activate main engine hydrogen burnoff system");
+      }
+      else if (t > 6) {
+        console.log("T-" + t + " seconds");
+      }
+      else if (t === 6) {
+        console.log("Main engine start");
+      }
+      else if (t > 0) {
+        console.log("T-" + t + " seconds");
+      }
+      else {
+      console.log("Solid rocket booster ignition and liftoff!");
+      }
+      t = t - 1;
+    }
+
+    // for Loop
+
+    // for Loop explicitly forces you to difine the startig point, stop point, and each step of the code loop.
+  
+    /*
+    for (start; stop; step) {
+    // do this thing
+    }
+    */
+
+    for ( /*starting point*/ let i = 0; /* stopping point */  i <= 10; /*how to get to the next item*/ i = i + 1) {
+      console.log(i + " Feysal is the best programmer ever lived!!")
+    }
+
+
+    // Nested Loops
+    // nested loops are just  loops inside of other loops.
+
+    for (let x = 0; x < 3; x = x + 1) {
+      for (let y = 0; y < 2; y = y + 1) {
+        console.log(x + "," + y);
+      }
+    }
+
+    // assignment operator
+// the same for all of the artimathec operator;
+    let m = 1;
+    m += 3;
+    m *= 10;
+    console.log(m);
+
+    for ( z = 9; z >= 1; z--) {
+      console.log("hello " + z);
+    }
+
+    let sulution = 1; 
+   
+    for (f = 1; f <= 12; f++) {
+      sulution *= f;
+    }
+    console.log(sulution);
+
+    // factorial loop
+    // the below one is using my unique approach
+     let factorial = 12;
+     for (d = 11; d >= 1; d--) {
+      factorial *= d;
+     }
+     console.log(factorial);
+
+     for (r = 0; r <= 25; r++) {
+      for (s = 0; s <= 99; s++)
+      console.log(r + "-" + s);
+     }
+
+     // function
+      function reverseString(reverseMe) {
+        let reversed = "";
+        for (let f = reverseMe.length - 1; f >= 0; f--) {
+          reversed += reverseMe[f];
+        }
+        return reversed;
+      }   
+      console.log(reverseString('feysal'));
+
+      // Set one parameter to hold the value of the input string
+      function reverseMyName(reverseMe) {
+        // Declare a variable with an empty sting to store the reversed string
+        let reversed = "";
+        // Loop through the 'reveseMe' string from back to front
+        for (let i = reverseMe.length - 1; i >= 0; i--) {
+          // Add each character to the end of 'reversed'
+          reversed += reverseMe[i];
+        }
+        // Return the completed string when the loop is complete return reversed;
+        return reversed;
+      }
+      console.log(reverseMyName('commerse'));
+
+      function sayHello() {
+        const message = "hello! programmer";
+        
+        console.log(message);
+        return message;
+      }
+      sayHello();
+
+      /*
+      FUNCTIONS package up code  so you can easily use ( and reuse) a block of code.
+      PARAMETERS are variables that used to store the data that's passed into a function for the function to use
+      ARGUMENTS are teh actual data thata's passed into function when it is invoked
+
+      */
+     // x and y are parameters in this function declaration
+function add(x, y) {
+  // function body
+  // Here, `sum` variable has a scope within the function. 
+  // Such variables defined within a function are called Local variables
+  // You can try giving it another name
+  const sum = x + y;
+  return sum; // return statement
+}
+
+// 1 and 2 are passed into the function as arguments, 
+// and the result returned by the function is stored in a new variable `sum`
+// Here, `sum` is another variable, different from the one used inside the function
+const sum = add(1, 2);
+
+function add(x, y) {
+  const sum = x + y;
+  return sum;
+}
+add(23, 53);
+
+function laugh(num) {
+  return "ha ".repeat(num) + "!";
+}
+
+console.log(laugh(100));
+
+function isPrime(integer) {
+  for (x = 2; x < integer; x++) {
+    if (integer % x === 0) {
+      console.log(integer + "is divisble by " + x);
+      return false;
+    
+    }
+  }
+  return true;
+}
+
+isPrime(11);
+      
+      </script>
+  </body>
+</html>
