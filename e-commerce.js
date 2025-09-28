@@ -1660,31 +1660,35 @@ function initRecommendationsEngine() {
   }
 
   // --- Keep your existing render functions BUT update this one ---
+  
  // LOCATION: Lines 1050-1070
 function attachRecommendationListeners(containerId) {
+  
     const container = document.getElementById(containerId);
     if (!container) return;
 
     container.addEventListener('click', async (e) => {
         const btn = e.target.closest('.recommendation-cart-btn');
-        if (btn) {
-            e.stopPropagation();
-            const productId = btn.dataset.id;
-            
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-            
-           let success = false;
-if (!window.swiftbuyAPI || !window.swiftbuyAPI.addToCart) {
-    console.error('SwiftBuy API not available - using fallback');
-    // Fallback to direct function
-    success = await addToCart(productId);
-    if (success && window.swiftbuyAPI?.trackAddedToCart) {
-        window.swiftbuyAPI.trackAddedToCart(productId);
+       if (btn) {
+    // ADD THIS LINE TO PREVENT MULTIPLE CLICKS:
+    if (btn.disabled) return;
+    
+    e.stopPropagation();
+    const productId = btn.dataset.id;
+    
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    
+    let success = false;
+    if (!window.swiftbuyAPI || !window.swiftbuyAPI.addToCart) {
+        console.error('SwiftBuy API not available - using fallback');
+        success = await addToCart(productId);
+        if (success && window.swiftbuyAPI?.trackAddedToCart) {
+            window.swiftbuyAPI.trackAddedToCart(productId);
+        }
+    } else {
+        success = await window.swiftbuyAPI.addToCart(productId);
     }
-} else {
-    success = await window.swiftbuyAPI.addToCart(productId);
-}
             
             if (success) {
                 btn.innerHTML = '<i class="fas fa-check"></i>';
@@ -2167,7 +2171,13 @@ function refreshRecommendations() {
 
 // It seems all of the above code are functional cleaning up stopped right here.
 
-
+// Ensure API is available for recommendations
+setTimeout(() => {
+    if (typeof window.swiftbuyAPI === 'undefined' && typeof GlobalAPI !== 'undefined') {
+        window.swiftbuyAPI = GlobalAPI;
+        console.log('✅ SwiftBuy API initialized for recommendations');
+    }
+}, 1000);
 
 
 // this just debugging code 
