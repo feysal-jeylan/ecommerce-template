@@ -1660,27 +1660,53 @@ function initRecommendationsEngine() {
   }
 
   // --- Keep your existing render functions BUT update this one ---
-  function attachRecommendationListeners(containerId) {
+ // LOCATION: Lines 1050-1070
+function attachRecommendationListeners(containerId) {
     const container = document.getElementById(containerId);
     if (!container) return;
 
-    container.querySelectorAll('.recommendation-cart-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const productId = btn.dataset.id;
-        addToCart(productId);
-        trackAddedToCart(productId);
-        btn.innerHTML = '<i class="fas fa-check"></i>';
-        btn.style.background = 'var(--success)';
-        setTimeout(() => {
-          btn.innerHTML = 'Add to Cart';
-          btn.style.background = '';
-        }, 1000);
-      });
+    container.addEventListener('click', async (e) => {
+        const btn = e.target.closest('.recommendation-cart-btn');
+        if (btn) {
+            e.stopPropagation();
+            const productId = btn.dataset.id;
+            
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            
+           let success = false;
+if (!window.swiftbuyAPI || !window.swiftbuyAPI.addToCart) {
+    console.error('SwiftBuy API not available - using fallback');
+    // Fallback to direct function
+    success = await addToCart(productId);
+    if (success && window.swiftbuyAPI?.trackAddedToCart) {
+        window.swiftbuyAPI.trackAddedToCart(productId);
+    }
+} else {
+    success = await window.swiftbuyAPI.addToCart(productId);
+}
+            
+            if (success) {
+                btn.innerHTML = '<i class="fas fa-check"></i>';
+                btn.style.background = 'var(--success)';
+                setTimeout(() => {
+                    btn.innerHTML = 'Add to Cart';
+                    btn.style.background = '';
+                    btn.disabled = false;
+                }, 1000);
+            } else {
+                btn.innerHTML = 'Add to Cart';
+                btn.disabled = false;
+            }
+        }
+        
+        // Add wishlist button handler here too
+        const wishBtn = e.target.closest('.recommendation-wishlist-btn');
+        if (wishBtn) {
+            // ... wishlist handler
+        }
     });
-
-    // ... keep your existing listener code ...
-  }
+}
 
   // --- FIXED: Event tracking with safety checks ---
   function initEventTracking() {
