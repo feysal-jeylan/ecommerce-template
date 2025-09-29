@@ -200,13 +200,18 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 1.5rem;
+  width: 100%; /* ADD THIS */
+  box-sizing: border-box; /* ADD THIS */
 }
 
+/* FIX FORM GROUP WIDTH */
 .form-group {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
   margin-bottom: 1.5rem;
+  width: 100%; /* ADD THIS */
+  box-sizing: border-box; /* ADD THIS */
 }
 
 .form-group label {
@@ -223,8 +228,16 @@
   font-size: 1rem;
   transition: var(--checkout-transition);
   background: var(--checkout-surface);
+  width: 100%; /* ADD THIS - CRITICAL FIX */
+  box-sizing: border-box; /* ADD THIS */
+  max-width: 100%; /* ADD THIS */
 }
 
+/* SPECIFIC FIX FOR 3-COLUMN LAYOUTS (State, ZIP, CVV fields) */
+.form-row.three-column {
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 1rem; /* Reduce gap for 3 columns */
+}
 .form-group input:focus,
 .form-group select:focus {
   outline: none;
