@@ -796,7 +796,7 @@ function initFloatingCart() {
       checkoutBtn.onclick = () => {
         closeCartSidebar();
         setTimeout(() => {
-          window.location.href = 'checkout.html';
+          window.location.href = 'checkout/checkout.html';
         }, 300);
       };
     }
@@ -945,7 +945,7 @@ function removeCartItem(itemId) {
                 setTimeout(() => toastEl.hidden = true, 200);
                 closeCartSidebar();
                 setTimeout(() => {
-                  window.location.href = 'checkout.html';
+                  window.location.href = 'checkout/checkout.html';
                 }, 300);
               }
             }
@@ -2172,12 +2172,7 @@ function refreshRecommendations() {
 // It seems all of the above code are functional cleaning up stopped right here.
 
 // Ensure API is available for recommendations
-setTimeout(() => {
-    if (typeof window.swiftbuyAPI === 'undefined' && typeof GlobalAPI !== 'undefined') {
-        window.swiftbuyAPI = GlobalAPI;
-        console.log('✅ SwiftBuy API initialized for recommendations');
-    }
-}, 1000);
+
 
 
 // this just debugging code 
