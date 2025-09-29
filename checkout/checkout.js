@@ -519,11 +519,33 @@ class CheckoutManager {
         }
     }
 
-    async saveOrderToStorage() {
+  async saveOrderToStorage() {
+    try {
         const orders = JSON.parse(localStorage.getItem('swiftbuy_orders') || '[]');
-        orders.push(this.orderData);
+        
+        // Add the current order
+        orders.push({
+            ...this.orderData,
+            // Ensure order ID is set
+            order: {
+                ...this.orderData.order,
+                orderId: this.orderData.order.orderId || this.generateOrderId()
+            }
+        });
+        
+        // Save to localStorage
         localStorage.setItem('swiftbuy_orders', JSON.stringify(orders));
+        console.log('💾 Order saved:', this.orderData.order.orderId);
+        
+        // Verify it was saved
+        const verify = JSON.parse(localStorage.getItem('swiftbuy_orders') || '[]');
+        console.log('✅ Orders in storage:', verify.length);
+        
+    } catch (error) {
+        console.error('❌ Failed to save order:', error);
+        throw error;
     }
+}
 
     async handleOrderSuccess() {
         // Show success message

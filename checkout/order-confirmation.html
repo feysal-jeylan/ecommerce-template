@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Confirmation - SwiftBuy</title>
+    <link rel="stylesheet" href="../e-commerce.css">
+    <link rel="stylesheet" href="checkout.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="checkout-container">
+        <header class="checkout-header">
+            <a href="../e-commerce.html" class="back-to-store">
+                <i class="fas fa-arrow-left"></i>
+                Back to Store
+            </a>
+        </header>
+
+        <main class="confirmation-main">
+            <div class="confirmation-card">
+                <div class="confirmation-icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                
+                <h1>Order Confirmed! 🎉</h1>
+                <p class="confirmation-message">Thank you for your purchase. Your order has been successfully placed.</p>
+                
+                <div class="order-summary">
+                    <h3>Order Details</h3>
+                    <div class="order-info">
+                        <p><strong>Order ID:</strong> <span id="confirmation-order-id">Loading...</span></p>
+                        <p><strong>Order Total:</strong> <span id="confirmation-total">Loading...</span></p>
+                        <p><strong>Estimated Delivery:</strong> <span id="confirmation-delivery">2-3 business days</span></p>
+                    </div>
+                </div>
+
+                <div class="confirmation-actions">
+                    <a href="../order-tracking.html" class="btn-primary" id="track-order-btn">
+                        <i class="fas fa-map-marker-alt"></i>
+                        Track Your Order
+                    </a>
+                    <a href="../e-commerce.html" class="btn-secondary">
+                        <i class="fas fa-shopping-bag"></i>
+                        Continue Shopping
+                    </a>
+                </div>
+
+                <div class="confirmation-note">
+                    <p>📧 A confirmation email has been sent to your email address.</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Get order ID from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const orderId = urlParams.get('orderId');
+        
+        if (orderId) {
+            document.getElementById('confirmation-order-id').textContent = orderId;
+            
+            // Set up track order button
+            document.getElementById('track-order-btn').href = 
+                `../order-tracking.html?orderId=${orderId}`;
+            
+            // Try to get order total from localStorage
+            try {
+                const orders = JSON.parse(localStorage.getItem('swiftbuy_orders') || '[]');
+                const order = orders.find(o => o.order.orderId === orderId);
+                if (order) {
+                    document.getElementById('confirmation-total').textContent = 
+                        `$${order.order.total.toFixed(2)}`;
+                }
+            } catch (error) {
+                console.log('Could not load order details');
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Tracking - SwiftBuy</title>
+    <link rel="stylesheet" href="../e-commerce.css">
+    <link rel="stylesheet" href="order-tracking.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="order-tracking-container">
+        <!-- Header -->
+        <header class="tracking-header">
+            <a href="../e-commerce.html" class="back-to-store">
+                <i class="fas fa-arrow-left"></i>
+                Back to Store
+            </a>
+            <h1>Order Tracking</h1>
+        </header>
+
+        <main class="tracking-main">
+            <!-- Order Lookup Section -->
+            <section class="order-lookup" id="order-lookup">
+                <div class="lookup-card">
+                    <h2>Track Your Order</h2>
+                    <p>Enter your order ID and email to track your package</p>
+                    
+                    <form class="lookup-form" id="lookup-form">
+                        <div class="form-group">
+                            <label for="orderId">Order ID</label>
+                            <input type="text" id="orderId" name="orderId" placeholder="e.g., SWIFT123456789" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="trackingEmail">Email Address</label>
+                            <input type="email" id="trackingEmail" name="trackingEmail" required>
+                        </div>
+
+                        <button type="submit" class="btn-track">
+                            <i class="fas fa-search"></i>
+                            Track Order
+                        </button>
+                    </form>
+                </div>
+            </section>
+
+            <!-- Order Details Section (Hidden initially) -->
+            <section class="order-details" id="order-details" style="display: none;">
+                <!-- Order Header -->
+                <div class="order-header">
+                    <div class="order-meta">
+                        <h2 id="order-number">Order #SWIFT123456789</h2>
+                        <div class="order-status-badge" id="order-status-badge">
+                            <span class="status-text">Processing</span>
+                            <div class="status-indicator"></div>
+                        </div>
+                    </div>
+                    <div class="order-actions">
+                        <button class="btn-secondary" id="btn-print">
+                            <i class="fas fa-print"></i>
+                            Print Receipt
+                        </button>
+                        <button class="btn-secondary" id="btn-support">
+                            <i class="fas fa-headset"></i>
+                            Get Help
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Progress Timeline -->
+                <div class="progress-timeline">
+                    <div class="timeline-track"></div>
+                    <div class="timeline-steps">
+                        <div class="timeline-step active" data-step="ordered">
+                            <div class="step-icon">
+                                <i class="fas fa-shopping-cart"></i>
+                            </div>
+                            <div class="step-info">
+                                <span class="step-title">Order Placed</span>
+                                <span class="step-time" id="step-ordered-time">Today, 10:30 AM</span>
+                            </div>
+                        </div>
+
+                        <div class="timeline-step" data-step="confirmed">
+                            <div class="step-icon">
+                                <i class="fas fa-check-circle"></i>
+                            </div>
+                            <div class="step-info">
+                                <span class="step-title">Order Confirmed</span>
+                                <span class="step-time" id="step-confirmed-time">--</span>
+                            </div>
+                        </div>
+
+                        <div class="timeline-step" data-step="processing">
+                            <div class="step-icon">
+                                <i class="fas fa-cog"></i>
+                            </div>
+                            <div class="step-info">
+                                <span class="step-title">Processing</span>
+                                <span class="step-time" id="step-processing-time">--</span>
+                            </div>
+                        </div>
+
+                        <div class="timeline-step" data-step="shipped">
+                            <div class="step-icon">
+                                <i class="fas fa-shipping-fast"></i>
+                            </div>
+                            <div class="step-info">
+                                <span class="step-title">Shipped</span>
+                                <span class="step-time" id="step-shipped-time">--</span>
+                                <span class="step-detail" id="step-shipped-detail"></span>
+                            </div>
+                        </div>
+
+                        <div class="timeline-step" data-step="out-for-delivery">
+                            <div class="step-icon">
+                                <i class="fas fa-truck"></i>
+                            </div>
+                            <div class="step-info">
+                                <span class="step-title">Out for Delivery</span>
+                                <span class="step-time" id="step-delivery-time">--</span>
+                            </div>
+                        </div>
+
+                        <div class="timeline-step" data-step="delivered">
+                            <div class="step-icon">
+                                <i class="fas fa-home"></i>
+                            </div>
+                            <div class="step-info">
+                                <span class="step-title">Delivered</span>
+                                <span class="step-time" id="step-delivered-time">--</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Real-time Tracking Map -->
+                <div class="tracking-map" id="tracking-map">
+                    <div class="map-placeholder">
+                        <i class="fas fa-map-marked-alt"></i>
+                        <p>Live package tracking will appear here</p>
+                        <div class="map-loader">
+                            <div class="loader-dot"></div>
+                            <div class="loader-dot"></div>
+                            <div class="loader-dot"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Order Items & Shipping Info -->
+                <div class="order-content">
+                    <div class="order-items-section">
+                        <h3>Order Items</h3>
+                        <div class="order-items-list" id="order-items-list">
+                            <!-- Items populated by JS -->
+                        </div>
+                    </div>
+
+                    <div class="shipping-info-section">
+                        <h3>Shipping Information</h3>
+                        <div class="shipping-details" id="shipping-details">
+                            <!-- Shipping info populated by JS -->
+                        </div>
+
+                        <div class="delivery-estimate">
+                            <h4>Estimated Delivery</h4>
+                            <div class="estimate-card">
+                                <i class="fas fa-calendar-check"></i>
+                                <div class="estimate-info">
+                                    <span class="estimate-date" id="estimate-date">Monday, Dec 11</span>
+                                    <span class="estimate-range" id="estimate-range">Between 9:00 AM - 1:00 PM</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Real-time Updates Section -->
+                <div class="real-time-updates">
+                    <h3>Real-time Updates</h3>
+                    <div class="updates-feed" id="updates-feed">
+                        <!-- Updates populated by JS -->
+                    </div>
+                    <div class="update-notification">
+                        <i class="fas fa-bell"></i>
+                        <span>We'll notify you of important updates</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Order Not Found Section -->
+            <section class="order-not-found" id="order-not-found" style="display: none;">
+                <div class="not-found-card">
+                    <i class="fas fa-search"></i>
+                    <h2>Order Not Found</h2>
+                    <p>We couldn't find an order matching your search. Please check your Order ID and email address.</p>
+                    <button class="btn-primary" id="btn-try-again">
+                        Try Again
+                    </button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Support Modal -->
+    <div class="support-modal" id="support-modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Customer Support</h3>
+                <button class="modal-close" id="modal-close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <!-- Support options -->
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="order-tracking.js"></script>
+</body>
+</html>
