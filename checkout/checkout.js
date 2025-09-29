@@ -4,6 +4,25 @@ import { validateAddress } from './address-validator.js';
 import { processPayment } from './payment-processor.js';
 
 class CheckoutManager {
+
+
+        updateReviewTotals() {
+        // This updates the review step totals (already calculated in calculateTotals)
+        console.log('💰 Updating review totals...');
+        // The totals are already displayed from calculateTotals()
+    }
+        async calculateShippingCosts() {
+        // Simulate shipping calculation
+        console.log('📦 Calculating shipping costs...');
+        return new Promise(resolve => setTimeout(resolve, 500));
+    }
+
+    calculateTotal(cart) {
+        const subtotal = this.calculateSubtotal(cart);
+        const shipping = this.calculateShipping(cart);
+        const tax = this.calculateTax(cart);
+        return subtotal + shipping + tax;
+    }
         showFormErrors(form) {
         // Find first invalid field and focus it
         const firstInvalid = form.querySelector(':invalid');
