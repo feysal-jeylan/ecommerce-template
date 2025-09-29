@@ -4,6 +4,48 @@ import { validateAddress } from './address-validator.js';
 import { processPayment } from './payment-processor.js';
 
 class CheckoutManager {
+        showFormErrors(form) {
+        // Find first invalid field and focus it
+        const firstInvalid = form.querySelector(':invalid');
+        if (firstInvalid) {
+            firstInvalid.focus();
+            firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            
+            // Add visual error state
+            firstInvalid.classList.add('error');
+            setTimeout(() => firstInvalid.classList.remove('error'), 2000);
+        }
+    }
+
+    showAddressSuggestions(suggestions) {
+        console.log('Address suggestions:', suggestions);
+        // In a real app, you'd show these in a dropdown
+        // For now, just log them
+    }
+
+    showInventoryWarning(outOfStockItems) {
+        console.warn('Out of stock items:', outOfStockItems);
+        // In a real app, you'd show a modal or notification
+    }
+
+    // Add payment validation stubs
+    async validatePayPalPayment() {
+        // Simulate PayPal validation
+        return new Promise(resolve => setTimeout(() => resolve(true), 500));
+    }
+
+    async validateApplePayPayment() {
+        // Simulate Apple Pay validation  
+        return new Promise(resolve => setTimeout(() => resolve(true), 500));
+    }
+
+    suggestStockAlternatives() {
+        console.log('Suggesting stock alternatives');
+    }
+
+    suggestPaymentRetry() {
+        console.log('Suggesting payment retry');
+    }
     constructor() {
         this.currentStep = 1;
         this.orderData = {
@@ -182,6 +224,33 @@ class CheckoutManager {
         }
     }
 
+        setupInputFormatting() {
+        // Phone number formatting
+        const phoneInput = document.getElementById('phone');
+        if (phoneInput) {
+            phoneInput.addEventListener('input', (e) => {
+                this.formatPhoneNumber(e.target);
+            });
+        }
+
+        // Card number formatting is already in setupPaymentValidation
+    }
+
+    formatPhoneNumber(input) {
+        let value = input.value.replace(/\D/g, '');
+        if (value.length > 0) {
+            value = value.substring(0, 10);
+            if (value.length > 6) {
+                value = `(${value.substring(0, 3)}) ${value.substring(3, 6)}-${value.substring(6)}`;
+            } else if (value.length > 3) {
+                value = `(${value.substring(0, 3)}) ${value.substring(3)}`;
+            } else if (value.length > 0) {
+                value = `(${value}`;
+            }
+        }
+        input.value = value;
+    }
+
     // ===== SHIPPING STEP =====
     async validateShippingForm() {
         const form = document.getElementById('shipping-form');
@@ -356,7 +425,7 @@ class CheckoutManager {
         container.innerHTML = cart.map(item => `
             <div class="order-item">
                 <div class="order-item-image">
-                    <img src="${item.image}" alt="${item.name}">
+                    <img src="../${item.image}" alt="${item.name}">
                 </div>
                 <div class="order-item-details">
                     <div class="order-item-name">${item.name}</div>
@@ -466,7 +535,7 @@ class CheckoutManager {
         container.innerHTML = cart.map(item => `
             <div class="order-item">
                 <div class="order-item-image">
-                    <img src="${item.image}" alt="${item.name}">
+                    <img src="../${item.image}" alt="${item.name}">
                 </div>
                 <div class="order-item-details">
                     <div class="order-item-name">${item.name}</div>
