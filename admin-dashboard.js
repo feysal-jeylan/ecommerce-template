@@ -1,5 +1,25 @@
 // ===== ENTERPRISE ADMIN DASHBOARD SYSTEM =====
 class AdminDashboard {
+
+    getRealTimeStockQuantities() {
+    try {
+        const inventory = JSON.parse(localStorage.getItem('swiftbuy_inventory_v1') || '{}');
+        const stockMap = {};
+        
+        // Create a map of productId -> real-time stock
+        Object.values(inventory).forEach(item => {
+            const productId = item.id || item.productId;
+            if (productId && item.stock !== undefined) {
+                stockMap[productId] = item.stock;
+            }
+        });
+        
+        return stockMap;
+    } catch (error) {
+        console.error('Error getting real-time stock:', error);
+        return {};
+    }
+}
     constructor() {
         this.currentSection = 'dashboard';
         this.orders = [];
@@ -141,18 +161,24 @@ class AdminDashboard {
             .slice(0, 5);
     }
 
-    getLowStockItems() {
-        try {
-            const inventory = JSON.parse(localStorage.getItem('swiftbuy_inventory_v1') || '{}');
-            return Object.values(inventory).filter(item => 
-                item.stock > 0 && item.stock <= item.lowStockThreshold
-            );
-        } catch (error) {
-            return this.products.filter(product => 
-                product.inventory.stock > 0 && product.inventory.stock <= product.inventory.lowStockThreshold
-            );
-        }
+getLowStockItems() {
+    try {
+        const inventory = JSON.parse(localStorage.getItem('swiftbuy_inventory_v1') || '{}');
+        
+        return this.products.filter(product => {
+            const productInventory = inventory[product.id];
+            const stock = productInventory ? productInventory.stock : product.inventory.stock;
+            const threshold = productInventory ? productInventory.lowStockThreshold : product.inventory.lowStockThreshold;
+            
+            return stock > 0 && stock <= threshold;
+        });
+    } catch (error) {
+        console.error('Error in getLowStockItems:', error);
+        return this.products.filter(product => 
+            product.inventory.stock > 0 && product.inventory.stock <= product.inventory.lowStockThreshold
+        );
     }
+}
 
     // ===== DASHBOARD UI UPDATES =====
     updateDashboard() {
@@ -192,42 +218,54 @@ class AdminDashboard {
         `).join('');
     }
 
-    updateStockAlerts() {
-        const container = document.getElementById('stock-alerts');
-        if (!container) return;
+updateStockAlerts() {
+    const container = document.getElementById('stock-alerts');
+    if (!container) return;
 
-        const lowStockItems = this.analytics.lowStockItems.slice(0, 5);
+    const lowStockItems = this.getLowStockItems().slice(0, 5);
 
-        if (lowStockItems.length === 0) {
-            container.innerHTML = `
-                <div class="alert-item positive">
-                    <i class="fas fa-check-circle"></i>
-                    <span>All products are well stocked</span>
-                </div>
-            `;
-            return;
-        }
-
-        container.innerHTML = lowStockItems.map(item => `
-            <div class="alert-item warning">
-                <i class="fas fa-exclamation-triangle"></i>
+    if (lowStockItems.length === 0) {
+        container.innerHTML = `
+            <div class="alert-item positive">
+                <i class="fas fa-check-circle"></i>
                 <div class="alert-details">
-                    <strong>${item.name || item.product?.name}</strong>
-                    <span>Only ${item.stock} left in stock</span>
+                    <strong>All products are well stocked</strong>
+                    <span>No low stock alerts</span>
                 </div>
-                <button class="alert-action" data-product="${item.id || item.product?.id}">
-                    Restock
-                </button>
             </div>
-        `).join('');
-
-        // Add restock event listeners
-        container.querySelectorAll('.alert-action').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                this.restockProduct(e.target.dataset.product);
-            });
-        });
+        `;
+        return;
     }
+
+    // Get real-time inventory data
+    const inventory = JSON.parse(localStorage.getItem('swiftbuy_inventory_v1') || '{}');
+
+    container.innerHTML = lowStockItems.map(product => {
+        // Get real-time stock for this product
+        const productInventory = inventory[product.id];
+        const realTimeStock = productInventory ? productInventory.stock : product.inventory.stock;
+        
+        return `
+        <div class="alert-item warning">
+            <i class="fas fa-exclamation-triangle"></i>
+            <div class="alert-details">
+                <strong>${product.name}</strong>
+                <span>Only ${realTimeStock} left in stock</span>
+            </div>
+            <button class="alert-action" data-product="${product.id}">
+                Restock
+            </button>
+        </div>
+        `;
+    }).join('');
+
+    // Add restock event listeners
+    container.querySelectorAll('.alert-action').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            this.restockProduct(e.target.dataset.product);
+        });
+    });
+}
 
     updateProductsSection() {
         const container = document.getElementById('products-grid');
@@ -686,25 +724,36 @@ updateInventorySection() {
 
     const tbody = container.querySelector('tbody');
     
-    // Get ALL products instead of just low stock items
-    const inventoryItems = this.products || [];
+    // Get real-time inventory data
+    const inventory = JSON.parse(localStorage.getItem('swiftbuy_inventory_v1') || '{}');
     
-    tbody.innerHTML = inventoryItems.map(product => `
+    tbody.innerHTML = this.products.map(product => {
+        // Get real-time stock for this product
+        const productInventory = inventory[product.id];
+        const realTimeStock = productInventory ? productInventory.stock : product.inventory.stock;
+        const lowStockThreshold = productInventory ? productInventory.lowStockThreshold : product.inventory.lowStockThreshold;
+        
+        const status = realTimeStock === 0 ? 'out-of-stock' : 
+                      realTimeStock <= lowStockThreshold ? 'low-stock' : 'in-stock';
+        const statusText = realTimeStock === 0 ? 'Out of Stock' : 
+                          realTimeStock <= lowStockThreshold ? 'Low Stock' : 'In Stock';
+        
+        return `
         <tr>
             <td>
                 <strong>${product.name}</strong>
             </td>
-            <td>${product.id || 'N/A'}</td>
-            <td>${product.category || 'Uncategorized'}</td>
+            <td>${product.id}</td>
+            <td>${product.category}</td>
             <td>
-                <span class="${product.inventory.stock <= product.inventory.lowStockThreshold ? 'text-warning' : 'text-success'}">
-                    ${product.inventory.stock}
+                <span class="${realTimeStock <= lowStockThreshold ? 'text-warning' : 'text-success'}">
+                    ${realTimeStock}
                 </span>
             </td>
-            <td>${product.inventory.lowStockThreshold}</td>
+            <td>${lowStockThreshold}</td>
             <td>
-                <span class="status-badge ${product.inventory.stock === 0 ? 'out-of-stock' : product.inventory.stock <= product.inventory.lowStockThreshold ? 'low-stock' : 'in-stock'}">
-                    ${product.inventory.stock === 0 ? 'Out of Stock' : product.inventory.stock <= product.inventory.lowStockThreshold ? 'Low Stock' : 'In Stock'}
+                <span class="status-badge ${status}">
+                    ${statusText}
                 </span>
             </td>
             <td>
@@ -718,7 +767,8 @@ updateInventorySection() {
                 </div>
             </td>
         </tr>
-    `).join('');
+        `;
+    }).join('');
 }
 
 updateCustomersSection() {
