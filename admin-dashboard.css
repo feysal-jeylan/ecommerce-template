@@ -37,22 +37,23 @@ body {
   min-height: 100vh;
 }
 
-/* ===== SIDEBAR STYLES ===== */
 .admin-sidebar {
-  width: 280px;
-  background: var(--admin-sidebar);
-  color: white;
-  display: flex;
-  flex-direction: column;
-  transition: var(--admin-transition);
-  position: fixed;
-  height: 100vh;
-  z-index: 1000;
-  box-shadow: 4px 0 20px rgba(0, 0, 0, 0.1);
+    width: 280px;
+    background: var(--admin-sidebar);
+    color: white;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: fixed;
+    height: 100vh;
+    z-index: 1000;
+    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.1);
+    left: 0;
+    top: 0;
 }
 
 .admin-sidebar.collapsed {
-  transform: translateX(-100%);
+    transform: translateX(-100%);
 }
 
 .sidebar-header {
@@ -164,14 +165,16 @@ body {
 
 /* ===== MAIN CONTENT AREA ===== */
 .admin-main {
-  flex: 1;
-  margin-left: 280px;
-  transition: var(--admin-transition);
-  min-height: 100vh;
+    flex: 1;
+    margin-left: 280px;
+    transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    min-height: 100vh;
+    position: relative;
+    overflow-x: hidden; /* Prevent horizontal scroll */
 }
 
 .admin-sidebar.collapsed ~ .admin-main {
-  margin-left: 0;
+    margin-left: 0;
 }
 
 .admin-header {
@@ -273,6 +276,25 @@ body {
   padding: 2rem;
 }
 
+/* Enhanced scrollbar for better UX */
+.admin-content::-webkit-scrollbar {
+    width: 8px;
+}
+
+.admin-content::-webkit-scrollbar-track {
+    background: var(--admin-bg);
+}
+
+.admin-content::-webkit-scrollbar-thumb {
+    background: var(--admin-border);
+    border-radius: 4px;
+}
+
+.admin-content::-webkit-scrollbar-thumb:hover {
+    background: var(--admin-text-muted);
+}
+/* to here*/
+
 .content-section {
   display: none;
   animation: fadeIn 0.4s ease-out;
@@ -295,10 +317,10 @@ body {
 
 /* ===== STATS CARDS ===== */
 .stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 1.5rem;
-  margin-bottom: 2rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
 }
 
 .stat-card {
@@ -600,16 +622,18 @@ body {
 }
 
 .orders-table-container {
-  background: var(--admin-surface);
-  border-radius: var(--admin-radius);
-  box-shadow: var(--admin-shadow);
-  border: 1px solid var(--admin-border);
-  overflow: hidden;
+    background: var(--admin-surface);
+    border-radius: var(--admin-radius);
+    box-shadow: var(--admin-shadow);
+    border: 1px solid var(--admin-border);
+    overflow-x: auto; /* Horizontal scroll for tables */
+    position: relative;
 }
 
 .orders-table {
-  width: 100%;
-  border-collapse: collapse;
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 800px; /* Ensure table doesn't get too narrow */
 }
 
 .orders-table th {
@@ -660,8 +684,10 @@ body {
 .status-badge.delivered { background: #d1fae5; color: #065f46; }
 
 .action-buttons {
-  display: flex;
-  gap: 0.5rem;
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: nowrap;
+    min-width: 80px;
 }
 
 .btn-action {
@@ -967,68 +993,88 @@ body {
   }
 }
 
+/* Enhanced mobile sidebar */
 @media (max-width: 1024px) {
-  .admin-sidebar {
-    transform: translateX(-100%);
-  }
-  
-  .admin-sidebar.active {
-    transform: translateX(0);
-  }
-  
-  .admin-main {
-    margin-left: 0;
-  }
-  
-  .stats-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
+    .admin-sidebar {
+        transform: translateX(-100%);
+        width: 300px;
+    }
+    
+    .admin-sidebar.active {
+        transform: translateX(0);
+    }
+    
+    .admin-main {
+        margin-left: 0;
+        width: 100%;
+    }
+    
+    /* Overlay for mobile sidebar */
+    .admin-sidebar.active::before {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 300px;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: -1;
+    }
 }
 
+
+/* Prevent content overflow on small screens */
 @media (max-width: 768px) {
-  .admin-header {
-    padding: 1rem;
-  }
-  
-  .admin-content {
-    padding: 1rem;
-  }
-  
-  .stats-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .products-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .orders-table-container {
-    overflow-x: auto;
-  }
-  
-  .notifications-panel {
-    width: 100%;
-    right: -100%;
-  }
+    .admin-content {
+        padding: 1rem;
+        width: 100%;
+        overflow-x: hidden;
+    }
+    
+    .stats-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .charts-row,
+    .activity-row {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    /* Ensure chart containers don't overflow */
+    .chart-card {
+        min-width: 0;
+        overflow: hidden;
+    }
+    
+    canvas {
+        max-width: 100%;
+        height: auto !important;
+    }
 }
 
 @media (max-width: 480px) {
-  .chart-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 1rem;
-  }
-  
-  .section-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 1rem;
-  }
-  
-  .stat-card {
-    flex-direction: column;
-    text-align: center;
-  }
+    .admin-header {
+        padding: 1rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+    
+    .header-left,
+    .header-right {
+        width: 100%;
+        justify-content: space-between;
+    }
+    
+    .stat-card {
+        padding: 1rem;
+        min-width: 0;
+    }
+    
+    .product-card {
+        min-width: 0;
+    }
 }
 
 /* ===== ACCESSIBILITY ===== */
