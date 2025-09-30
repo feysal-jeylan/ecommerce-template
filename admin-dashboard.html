@@ -256,6 +256,146 @@
                     </div>
                 </section>
 
+           <!-- Inventory Section -->
+<section id="inventory" class="content-section">
+    <div class="section-header">
+        <h2>Inventory Management</h2>
+        <div class="section-actions">
+            <button class="btn-primary" id="refresh-inventory">
+                <i class="fas fa-sync-alt"></i>
+                Refresh Inventory
+            </button>
+        </div>
+    </div>
+    <div class="inventory-table-container">
+        <table class="orders-table" id="inventory-table">
+            <thead>
+                <tr>
+                    <th>Product</th>
+                    <th>SKU</th>
+                    <th>Category</th>
+                    <th>Current Stock</th>
+                    <th>Low Stock Threshold</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Inventory data populated by JS -->
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- Customers Section -->
+<section id="customers" class="content-section">
+    <div class="section-header">
+        <h2>Customer Management</h2>
+        <div class="section-actions">
+            <button class="btn-primary" id="export-customers">
+                <i class="fas fa-download"></i>
+                Export Customers
+            </button>
+        </div>
+    </div>
+    <div class="customers-table-container">
+        <table class="orders-table" id="customers-table">
+            <thead>
+                <tr>
+                    <th>Customer</th>
+                    <th>Email</th>
+                    <th>Orders</th>
+                    <th>Total Spent</th>
+                    <th>First Order</th>
+                    <th>Last Order</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Customers data populated by JS -->
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- Analytics Section -->
+<section id="analytics" class="content-section">
+    <div class="section-header">
+        <h2>Advanced Analytics</h2>
+        <div class="section-actions">
+            <select id="analytics-period">
+                <option value="7d">Last 7 Days</option>
+                <option value="30d">Last 30 Days</option>
+                <option value="90d">Last 90 Days</option>
+            </select>
+        </div>
+    </div>
+    
+    <div class="analytics-grid">
+        <div class="analytics-card">
+            <h3>Performance Metrics</h3>
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <span class="metric-value" id="conversion-rate">0%</span>
+                    <span class="metric-label">Conversion Rate</span>
+                </div>
+                <div class="metric-card">
+                    <span class="metric-value" id="avg-order-value">$0.00</span>
+                    <span class="metric-label">Avg Order Value</span>
+                </div>
+                <div class="metric-card">
+                    <span class="metric-value" id="customer-lifetime">$0.00</span>
+                    <span class="metric-label">Customer Lifetime Value</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="analytics-card">
+            <h3>Sales Funnel</h3>
+            <canvas id="funnel-chart" width="400" height="200"></canvas>
+        </div>
+    </div>
+</section>
+
+<!-- Settings Section -->
+<section id="settings" class="content-section">
+    <div class="section-header">
+        <h2>System Settings</h2>
+    </div>
+    
+    <div class="settings-grid">
+        <div class="settings-card">
+            <h3>Store Configuration</h3>
+            <div class="setting-item">
+                <label>Store Name</label>
+                <input type="text" id="store-name" value="SwiftBuy" class="setting-input">
+            </div>
+            <div class="setting-item">
+                <label>Currency</label>
+                <select id="store-currency" class="setting-input">
+                    <option value="USD">USD ($)</option>
+                    <option value="EUR">EUR (€)</option>
+                    <option value="GBP">GBP (£)</option>
+                </select>
+            </div>
+            <button class="btn-primary" id="save-settings">
+                Save Settings
+            </button>
+        </div>
+        
+        <div class="settings-card">
+            <h3>Inventory Alerts</h3>
+            <div class="setting-item">
+                <label>Low Stock Threshold</label>
+                <input type="number" id="low-stock-threshold" value="10" class="setting-input">
+            </div>
+            <div class="setting-item">
+                <label>Out of Stock Alert</label>
+                <input type="checkbox" id="out-of-stock-alert" checked>
+            </div>
+        </div>
+    </div>
+</section>
                 <!-- Add more sections for Inventory, Customers, Analytics, Settings -->
             </div>
         </main>

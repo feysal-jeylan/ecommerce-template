@@ -510,6 +510,32 @@ class AdminDashboard {
 
     // ===== EVENT HANDLERS =====
     setupEventListeners() {
+
+        // Enhanced sidebar toggle
+document.querySelector('.sidebar-toggle').addEventListener('click', () => {
+    const sidebar = document.querySelector('.admin-sidebar');
+    const isMobile = window.innerWidth <= 1200;
+    
+    if (isMobile) {
+        sidebar.classList.toggle('active');
+        // Create overlay if it doesn't exist
+        let overlay = document.querySelector('.sidebar-overlay');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.className = 'sidebar-overlay';
+            document.body.appendChild(overlay);
+            
+            overlay.addEventListener('click', () => {
+                sidebar.classList.remove('active');
+                overlay.classList.remove('active');
+            });
+        }
+        overlay.classList.toggle('active');
+    } else {
+        // Desktop behavior
+        sidebar.classList.toggle('collapsed');
+    }
+});
         // Navigation
         document.querySelectorAll('.nav-link').forEach(link => {
             link.addEventListener('click', (e) => {
@@ -518,10 +544,6 @@ class AdminDashboard {
             });
         });
 
-        // Sidebar toggle
-        document.querySelector('.sidebar-toggle').addEventListener('click', () => {
-            document.querySelector('.admin-sidebar').classList.toggle('collapsed');
-        });
 
         // Notifications panel
         document.getElementById('notifications-btn').addEventListener('click', () => {
@@ -547,40 +569,361 @@ class AdminDashboard {
         document.getElementById('export-orders')?.addEventListener('click', () => {
             this.exportOrdersToCSV();
         });
+        this.setupStatsCardInteractions()
     }
 
-    switchSection(sectionId) {
-        // Update navigation
-        document.querySelectorAll('.nav-item').forEach(item => {
-            item.classList.remove('active');
-        });
-        document.querySelector(`[href="#${sectionId}"]`).parentElement.classList.add('active');
+    // From here
 
-        // Update content
-        document.querySelectorAll('.content-section').forEach(section => {
-            section.classList.remove('active');
-        });
-        document.getElementById(sectionId).classList.add('active');
-
-        // Update page title
-        document.getElementById('page-title').textContent = 
-            sectionId.charAt(0).toUpperCase() + sectionId.slice(1);
-
-        // Load section-specific data
-        this.currentSection = sectionId;
+    setupStatsCardInteractions() {
+    // Add click handlers to stats cards
+    document.addEventListener('click', (e) => {
+        const statCard = e.target.closest('.stat-card');
+        if (!statCard) return;
         
-        switch(sectionId) {
-            case 'orders':
-                this.updateOrdersTable();
-                break;
-            case 'products':
-                this.updateProductsSection();
-                break;
-            case 'inventory':
-                // Will be handled by inventory-manager.js
-                break;
+        if (statCard.classList.contains('revenue')) {
+            this.switchSection('analytics');
+            this.showToast('Opening revenue analytics...');
+        } else if (statCard.classList.contains('orders')) {
+            this.switchSection('orders');
+            this.showToast('Navigating to orders...');
+        } else if (statCard.classList.contains('customers')) {
+            this.switchSection('customers');
+            this.showToast('Opening customer management...');
+        } else if (statCard.classList.contains('inventory')) {
+            this.switchSection('inventory');
+            this.showToast('Checking inventory alerts...');
         }
+    });
+    
+    // Add hover effects
+    document.querySelectorAll('.stat-card').forEach(card => {
+        card.style.cursor = 'pointer';
+        card.addEventListener('mouseenter', () => {
+            card.style.transform = 'translateY(-5px) scale(1.02)';
+        });
+        card.addEventListener('mouseleave', () => {
+            card.style.transform = 'translateY(0) scale(1)';
+        });
+    });
+}
+//To here
+
+// ===== ENHANCED SECTION MANAGEMENT =====
+switchSection(sectionId) {
+    console.log('Switching to section:', sectionId);
+    
+    // Validate section exists
+    const targetSection = document.getElementById(sectionId);
+    if (!targetSection) {
+        console.warn(`Section '${sectionId}' not found in DOM`);
+        this.showToast(`Section '${sectionId}' is not available yet`, 'error');
+        
+        // Fallback to dashboard if section doesn't exist
+        if (sectionId !== 'dashboard') {
+            this.switchSection('dashboard');
+        }
+        return;
     }
+
+    // Update navigation with safe selection
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.classList.remove('active');
+    });
+    
+    const navLink = document.querySelector(`[href="#${sectionId}"]`);
+    if (navLink && navLink.parentElement) {
+        navLink.parentElement.classList.add('active');
+    }
+
+    // Update content sections safely
+    document.querySelectorAll('.content-section').forEach(section => {
+        section.classList.remove('active');
+    });
+    
+    targetSection.classList.add('active');
+
+    // Update page title
+    const pageTitle = document.getElementById('page-title');
+    if (pageTitle) {
+        pageTitle.textContent = this.formatSectionTitle(sectionId);
+    }
+
+    // Close sidebar on mobile after navigation
+    this.closeSidebarOnMobile();
+
+    // Load section-specific data
+    this.currentSection = sectionId;
+    
+    switch(sectionId) {
+        case 'dashboard':
+            this.updateDashboard();
+            break;
+        case 'orders':
+            this.updateOrdersTable();
+            break;
+        case 'products':
+            this.updateProductsSection();
+            break;
+        case 'inventory':
+            this.updateInventorySection();
+            break;
+        case 'customers':
+            this.updateCustomersSection();
+            break;
+        case 'analytics':
+            this.updateAnalyticsSection();
+            break;
+        case 'settings':
+            this.updateSettingsSection();
+            break;
+    }
+}
+
+// ===== SECTION-SPECIFIC METHODS =====
+updateInventorySection() {
+    const container = document.getElementById('inventory-table');
+    if (!container) return;
+
+    const tbody = container.querySelector('tbody');
+    
+    // Get ALL products instead of just low stock items
+    const inventoryItems = this.products || [];
+    
+    tbody.innerHTML = inventoryItems.map(product => `
+        <tr>
+            <td>
+                <strong>${product.name}</strong>
+            </td>
+            <td>${product.id || 'N/A'}</td>
+            <td>${product.category || 'Uncategorized'}</td>
+            <td>
+                <span class="${product.inventory.stock <= product.inventory.lowStockThreshold ? 'text-warning' : 'text-success'}">
+                    ${product.inventory.stock}
+                </span>
+            </td>
+            <td>${product.inventory.lowStockThreshold}</td>
+            <td>
+                <span class="status-badge ${product.inventory.stock === 0 ? 'out-of-stock' : product.inventory.stock <= product.inventory.lowStockThreshold ? 'low-stock' : 'in-stock'}">
+                    ${product.inventory.stock === 0 ? 'Out of Stock' : product.inventory.stock <= product.inventory.lowStockThreshold ? 'Low Stock' : 'In Stock'}
+                </span>
+            </td>
+            <td>
+                <div class="action-buttons">
+                    <button class="btn-action restock-item" data-id="${product.id}">
+                        <i class="fas fa-boxes"></i>
+                    </button>
+                    <button class="btn-action edit-item" data-id="${product.id}">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+}
+
+updateCustomersSection() {
+    const container = document.getElementById('customers-table');
+    if (!container) return;
+
+    const tbody = container.querySelector('tbody');
+    
+    tbody.innerHTML = this.customers.map(customer => `
+        <tr>
+            <td>
+                <strong>${customer.name}</strong>
+            </td>
+            <td>${customer.email}</td>
+            <td>${customer.orders}</td>
+            <td>$${customer.totalSpent.toFixed(2)}</td>
+            <td>${this.formatDate(customer.firstOrder)}</td>
+            <td>${this.formatDate(customer.lastOrder)}</td>
+            <td>
+                <div class="action-buttons">
+                    <button class="btn-action view-customer" data-email="${customer.email}">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn-action contact-customer" data-email="${customer.email}">
+                        <i class="fas fa-envelope"></i>
+                    </button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+}
+
+updateAnalyticsSection() {
+    // Update metrics
+    this.updateElement('conversion-rate', `${this.analytics.conversionRate.toFixed(1)}%`);
+    this.updateElement('avg-order-value', `$${this.analytics.averageOrderValue.toFixed(2)}`);
+    this.updateElement('customer-lifetime', `$${(this.analytics.averageOrderValue * 2.5).toFixed(2)}`);
+    
+    // Update analytics chart
+    this.updateFunnelChart();
+}
+
+updateSettingsSection() {
+    // Load current settings
+    const settings = JSON.parse(localStorage.getItem('swiftbuy_admin_settings') || '{}');
+    
+    if (settings.storeName) {
+        document.getElementById('store-name').value = settings.storeName;
+    }
+    if (settings.currency) {
+        document.getElementById('store-currency').value = settings.currency;
+    }
+    if (settings.lowStockThreshold) {
+        document.getElementById('low-stock-threshold').value = settings.lowStockThreshold;
+    }
+}
+
+updateFunnelChart() {
+    const ctx = document.getElementById('funnel-chart');
+    if (!ctx) return;
+
+    // Simple funnel chart implementation
+    if (this.funnelChart) {
+        this.funnelChart.destroy();
+    }
+
+    this.funnelChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['Visitors', 'Add to Cart', 'Checkout', 'Purchases'],
+            datasets: [{
+                label: 'Conversion Funnel',
+                data: [100, 30, 15, this.orders.length],
+                backgroundColor: [
+                    '#2563eb',
+                    '#7c3aed',
+                    '#10b981',
+                    '#f59e0b'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            }
+        }
+    });
+}
+
+// ===== ENHANCED SIDEBAR MANAGEMENT =====
+closeSidebarOnMobile() {
+    if (window.innerWidth <= 1200) {
+        document.querySelector('.admin-sidebar').classList.remove('active');
+        document.querySelector('.sidebar-overlay')?.classList.remove('active');
+    }
+}
+
+formatSectionTitle(sectionId) {
+    const titleMap = {
+        'dashboard': 'Dashboard',
+        'orders': 'Order Management',
+        'products': 'Product Management',
+        'inventory': 'Inventory Management',
+        'customers': 'Customer Management',
+        'analytics': 'Analytics & Reports',
+        'settings': 'System Settings'
+    };
+    return titleMap[sectionId] || sectionId;
+}
+// Add missing section handlers
+loadInventoryData() {
+    // Initialize inventory manager if available
+    if (window.inventoryManager) {
+        window.inventoryManager.init();
+    } else {
+        this.showToast('Inventory manager loading...', 'info');
+        // Fallback to basic inventory display
+        this.updateStockAlerts();
+    }
+}
+
+updateCustomersSection() {
+    const container = document.getElementById('customers-section');
+    if (!container) {
+        console.warn('Customers section not found in DOM');
+        return;
+    }
+    
+    // Basic customers display fallback
+    container.innerHTML = `
+        <div class="section-header">
+            <h2>Customer Management</h2>
+            <div class="section-actions">
+                <button class="btn-primary" id="export-customers">
+                    <i class="fas fa-download"></i>
+                    Export Customers
+                </button>
+            </div>
+        </div>
+        <div class="customers-container">
+            <p>Customer management interface will be implemented here.</p>
+            <p>Total Customers: <strong>${this.customers.length}</strong></p>
+        </div>
+    `;
+}
+
+updateAdvancedAnalytics() {
+    const container = document.getElementById('analytics-section');
+    if (!container) {
+        console.warn('Analytics section not found in DOM');
+        return;
+    }
+    
+    container.innerHTML = `
+        <div class="section-header">
+            <h2>Advanced Analytics</h2>
+        </div>
+        <div class="analytics-container">
+            <p>Advanced analytics dashboard will be implemented here.</p>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3>${this.analytics.totalRevenue.toFixed(2)}</h3>
+                    <span>Total Revenue</span>
+                </div>
+                <div class="stat-card">
+                    <h3>${this.analytics.averageOrderValue.toFixed(2)}</h3>
+                    <span>Average Order Value</span>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+loadSettings() {
+    const container = document.getElementById('settings-section');
+    if (!container) {
+        console.warn('Settings section not found in DOM');
+        return;
+    }
+    
+    container.innerHTML = `
+        <div class="section-header">
+            <h2>System Settings</h2>
+        </div>
+        <div class="settings-container">
+            <p>System configuration interface will be implemented here.</p>
+        </div>
+    `;
+}
+
+formatSectionTitle(sectionId) {
+    const titleMap = {
+        'dashboard': 'Dashboard',
+        'orders': 'Order Management',
+        'products': 'Product Management',
+        'inventory': 'Inventory Management',
+        'customers': 'Customer Management',
+        'analytics': 'Analytics & Reports',
+        'settings': 'System Settings'
+    };
+    return titleMap[sectionId] || sectionId;
+}
 
     // ===== UTILITY METHODS =====
     updateElement(id, content) {
