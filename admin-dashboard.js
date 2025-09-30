@@ -64,31 +64,43 @@ class AdminDashboard {
         }
     }
 
-    loadCustomers() {
-        // Extract customers from orders
-        const customerMap = new Map();
-        
-        this.orders.forEach(order => {
-            const email = order.shipping.email;
-            if (!customerMap.has(email)) {
-                customerMap.set(email, {
-                    email: email,
-                    name: `${order.shipping.firstName} ${order.shipping.lastName}`,
-                    orders: 1,
-                    totalSpent: order.order.total,
-                    firstOrder: order.order.timestamp,
-                    lastOrder: order.order.timestamp
-                });
-            } else {
-                const customer = customerMap.get(email);
-                customer.orders++;
-                customer.totalSpent += order.order.total;
-                customer.lastOrder = order.order.timestamp;
-            }
-        });
+loadCustomers() {
+    // Extract customers from orders with enhanced data
+    const customerMap = new Map();
+    
+    this.orders.forEach(order => {
+        const email = order.shipping.email;
+        if (!customerMap.has(email)) {
+            customerMap.set(email, {
+                email: email,
+                name: `${order.shipping.firstName} ${order.shipping.lastName}`,
+                phone: order.shipping.phone,
+                address: `${order.shipping.address}, ${order.shipping.city}`,
+                orders: 1,
+                totalSpent: order.order.total,
+                firstOrder: order.order.timestamp,
+                lastOrder: order.order.timestamp,
+                // Additional pro fields
+                lifetimeValue: order.order.total,
+                averageOrderValue: order.order.total,
+                lastActive: order.order.timestamp
+            });
+        } else {
+            const customer = customerMap.get(email);
+            customer.orders++;
+            customer.totalSpent += order.order.total;
+            customer.lifetimeValue = customer.totalSpent;
+            customer.averageOrderValue = customer.totalSpent / customer.orders;
+            customer.lastOrder = order.order.timestamp;
+            customer.lastActive = order.order.timestamp;
+        }
+    });
 
-        this.customers = Array.from(customerMap.values());
-    }
+    this.customers = Array.from(customerMap.values())
+        .sort((a, b) => b.totalSpent - a.totalSpent); // Sort by highest spenders first
+    
+    console.log('👥 Loaded customers:', this.customers.length);
+}
 
     // ===== ANALYTICS & REPORTING =====
     calculateAnalytics() {
@@ -772,33 +784,189 @@ updateInventorySection() {
 }
 
 updateCustomersSection() {
+    this.updateCustomerStats();
+    this.renderCustomersTable();
+    this.setupCustomerEventListeners();
+}
+
+updateCustomerStats() {
+    const totalCustomers = this.customers.length;
+    const vipCustomers = this.customers.filter(c => c.totalSpent > 500).length;
+    const avgOrders = totalCustomers > 0 ? 
+        (this.customers.reduce((sum, c) => sum + c.orders, 0) / totalCustomers).toFixed(1) : 0;
+    const avgSpent = totalCustomers > 0 ? 
+        (this.customers.reduce((sum, c) => sum + c.totalSpent, 0) / totalCustomers).toFixed(2) : 0;
+
+    this.updateElement('total-customers-count', totalCustomers);
+    this.updateElement('vip-customers-count', vipCustomers);
+    this.updateElement('avg-orders-count', avgOrders);
+    this.updateElement('avg-spent', `$${avgSpent}`);
+}
+
+renderCustomersTable(customersToShow = this.customers) {
     const container = document.getElementById('customers-table');
     if (!container) return;
 
     const tbody = container.querySelector('tbody');
     
-    tbody.innerHTML = this.customers.map(customer => `
+    tbody.innerHTML = customersToShow.map(customer => {
+        const tier = customer.totalSpent > 500 ? 'vip' : customer.totalSpent > 200 ? 'premium' : 'standard';
+        const tierText = customer.totalSpent > 500 ? 'VIP' : customer.totalSpent > 200 ? 'Premium' : 'Standard';
+        const initials = customer.name.split(' ').map(n => n[0]).join('').toUpperCase();
+        const lastActive = new Date(customer.lastOrder) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) ? 'active' : 'inactive';
+        
+        return `
         <tr>
             <td>
-                <strong>${customer.name}</strong>
+                <input type="checkbox" class="customer-checkbox" data-email="${customer.email}">
             </td>
-            <td>${customer.email}</td>
-            <td>${customer.orders}</td>
-            <td>$${customer.totalSpent.toFixed(2)}</td>
-            <td>${this.formatDate(customer.firstOrder)}</td>
-            <td>${this.formatDate(customer.lastOrder)}</td>
             <td>
-                <div class="action-buttons">
-                    <button class="btn-action view-customer" data-email="${customer.email}">
+                <div class="customer-info">
+                    <div class="customer-avatar">${initials}</div>
+                    <div class="customer-details">
+                        <span class="customer-name">${customer.name}</span>
+                        <span class="customer-tier tier-${tier}">${tierText}</span>
+                    </div>
+                </div>
+            </td>
+            <td>
+                <div class="customer-details">
+                    <span class="customer-email">${customer.email}</span>
+                    <span class="customer-phone">${customer.phone || 'No phone'}</span>
+                </div>
+            </td>
+            <td>
+                <strong>${customer.orders}</strong>
+                <div class="text-muted">orders</div>
+            </td>
+            <td>
+                <strong>$${customer.totalSpent.toFixed(2)}</strong>
+                <div class="text-muted">total</div>
+            </td>
+            <td>
+                <span class="status-${lastActive}">
+                    <i class="fas fa-circle"></i>
+                    ${lastActive === 'active' ? 'Active' : 'Inactive'}
+                </span>
+            </td>
+            <td>${this.formatTimeAgo(customer.lastOrder)}</td>
+            <td>
+                <div class="customer-actions">
+                    <button class="btn-customer-action btn-view" data-email="${customer.email}" title="View Profile">
                         <i class="fas fa-eye"></i>
                     </button>
-                    <button class="btn-action contact-customer" data-email="${customer.email}">
+                    <button class="btn-customer-action btn-email" data-email="${customer.email}" title="Send Email">
                         <i class="fas fa-envelope"></i>
+                    </button>
+                    <button class="btn-customer-action btn-edit" data-email="${customer.email}" title="Edit Customer">
+                        <i class="fas fa-edit"></i>
                     </button>
                 </div>
             </td>
         </tr>
-    `).join('');
+        `;
+    }).join('');
+}
+
+setupCustomerEventListeners() {
+    // Search functionality
+    const searchInput = document.getElementById('customer-search');
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            const filteredCustomers = this.customers.filter(customer => 
+                customer.name.toLowerCase().includes(searchTerm) ||
+                customer.email.toLowerCase().includes(searchTerm)
+            );
+            this.renderCustomersTable(filteredCustomers);
+        });
+    }
+
+    // Select all checkbox
+    const selectAll = document.getElementById('select-all-customers');
+    if (selectAll) {
+        selectAll.addEventListener('change', (e) => {
+            const checkboxes = document.querySelectorAll('.customer-checkbox');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = e.target.checked;
+            });
+        });
+    }
+
+    // Customer action buttons
+    document.addEventListener('click', (e) => {
+        if (e.target.closest('.btn-view')) {
+            const email = e.target.closest('.btn-view').dataset.email;
+            this.viewCustomerProfile(email);
+        } else if (e.target.closest('.btn-email')) {
+            const email = e.target.closest('.btn-email').dataset.email;
+            this.sendCustomerEmail(email);
+        } else if (e.target.closest('.btn-edit')) {
+            const email = e.target.closest('.btn-edit').dataset.email;
+            this.editCustomer(email);
+        }
+    });
+
+    // Export functionality
+    const exportBtn = document.getElementById('export-customers');
+    if (exportBtn) {
+        exportBtn.addEventListener('click', () => {
+            this.exportCustomersToCSV();
+        });
+    }
+}
+
+viewCustomerProfile(email) {
+    const customer = this.customers.find(c => c.email === email);
+    if (customer) {
+        this.showToast(`Opening ${customer.name}'s profile...`);
+        // Advanced: Open customer detail modal
+        console.log('View customer profile:', customer);
+    }
+}
+
+sendCustomerEmail(email) {
+    const customer = this.customers.find(c => c.email === email);
+    if (customer) {
+        this.showToast(`Preparing email to ${customer.name}...`);
+        // Advanced: Open email composer
+        console.log('Send email to:', customer);
+    }
+}
+
+editCustomer(email) {
+    const customer = this.customers.find(c => c.email === email);
+    if (customer) {
+        this.showToast(`Editing ${customer.name}...`);
+        // Advanced: Open customer editor
+        console.log('Edit customer:', customer);
+    }
+}
+
+exportCustomersToCSV() {
+    const headers = ['Name', 'Email', 'Orders', 'Total Spent', 'First Order', 'Last Order', 'Tier'];
+    const csvData = this.customers.map(customer => [
+        customer.name,
+        customer.email,
+        customer.orders,
+        `$${customer.totalSpent.toFixed(2)}`,
+        this.formatDate(customer.firstOrder),
+        this.formatDate(customer.lastOrder),
+        customer.totalSpent > 500 ? 'VIP' : customer.totalSpent > 200 ? 'Premium' : 'Standard'
+    ]);
+
+    const csvContent = [headers, ...csvData]
+        .map(row => row.map(field => `"${field}"`).join(','))
+        .join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `customers-export-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    
+    this.showToast('Customers exported successfully!');
 }
 
 updateAnalyticsSection() {
@@ -891,31 +1059,6 @@ loadInventoryData() {
         // Fallback to basic inventory display
         this.updateStockAlerts();
     }
-}
-
-updateCustomersSection() {
-    const container = document.getElementById('customers-section');
-    if (!container) {
-        console.warn('Customers section not found in DOM');
-        return;
-    }
-    
-    // Basic customers display fallback
-    container.innerHTML = `
-        <div class="section-header">
-            <h2>Customer Management</h2>
-            <div class="section-actions">
-                <button class="btn-primary" id="export-customers">
-                    <i class="fas fa-download"></i>
-                    Export Customers
-                </button>
-            </div>
-        </div>
-        <div class="customers-container">
-            <p>Customer management interface will be implemented here.</p>
-            <p>Total Customers: <strong>${this.customers.length}</strong></p>
-        </div>
-    `;
 }
 
 updateAdvancedAnalytics() {

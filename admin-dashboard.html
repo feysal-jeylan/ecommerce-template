@@ -292,22 +292,71 @@
     <div class="section-header">
         <h2>Customer Management</h2>
         <div class="section-actions">
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" id="customer-search" placeholder="Search customers...">
+            </div>
             <button class="btn-primary" id="export-customers">
                 <i class="fas fa-download"></i>
-                Export Customers
+                Export CSV
             </button>
         </div>
     </div>
+
+    <!-- Customer Stats -->
+    <div class="customer-stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-users"></i>
+            </div>
+            <div class="stat-info">
+                <h3 id="total-customers-count">0</h3>
+                <span>Total Customers</span>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-star"></i>
+            </div>
+            <div class="stat-info">
+                <h3 id="vip-customers-count">0</h3>
+                <span>VIP Customers</span>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-shopping-cart"></i>
+            </div>
+            <div class="stat-info">
+                <h3 id="avg-orders-count">0</h3>
+                <span>Avg Orders/Customer</span>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-dollar-sign"></i>
+            </div>
+            <div class="stat-info">
+                <h3 id="avg-spent">$0</h3>
+                <span>Avg Lifetime Value</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Customers Table -->
     <div class="customers-table-container">
         <table class="orders-table" id="customers-table">
             <thead>
                 <tr>
+                    <th>
+                        <input type="checkbox" id="select-all-customers">
+                    </th>
                     <th>Customer</th>
-                    <th>Email</th>
+                    <th>Contact</th>
                     <th>Orders</th>
                     <th>Total Spent</th>
-                    <th>First Order</th>
-                    <th>Last Order</th>
+                    <th>Status</th>
+                    <th>Last Active</th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -315,6 +364,17 @@
                 <!-- Customers data populated by JS -->
             </tbody>
         </table>
+    </div>
+
+    <!-- Pagination -->
+    <div class="pagination">
+        <button class="pagination-btn" id="prev-page">
+            <i class="fas fa-chevron-left"></i>
+        </button>
+        <span class="page-info">Page <span id="current-page">1</span> of <span id="total-pages">1</span></span>
+        <button class="pagination-btn" id="next-page">
+            <i class="fas fa-chevron-right"></i>
+        </button>
     </div>
 </section>
 
