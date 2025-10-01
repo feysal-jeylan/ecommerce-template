@@ -2250,18 +2250,122 @@ cleanupAnalytics() {
     }
 }
 updateSettingsSection() {
-    // Load current settings
+    this.loadSettings();
+    this.setupSettingsEventListeners();
+    this.initializeSettingsTabs();
+}
+
+loadSettings() {
     const settings = JSON.parse(localStorage.getItem('swiftbuy_admin_settings') || '{}');
     
-    if (settings.storeName) {
-        document.getElementById('store-name').value = settings.storeName;
-    }
-    if (settings.currency) {
-        document.getElementById('store-currency').value = settings.currency;
-    }
-    if (settings.lowStockThreshold) {
-        document.getElementById('low-stock-threshold').value = settings.lowStockThreshold;
-    }
+    // General Settings
+    this.setValue('default-dashboard-view', settings.defaultDashboardView || 'overview');
+    this.setValue('date-format', settings.dateFormat || 'MM/DD/YYYY');
+    this.setValue('timezone', settings.timezone || 'UTC-5');
+    this.setValue('theme', settings.theme || 'light');
+    this.setValue('items-per-page', settings.itemsPerPage || 25);
+    this.setValue('auto-refresh', settings.autoRefresh || 60);
+    this.setValue('session-timeout', settings.sessionTimeout || 60);
+    this.setChecked('two-factor-auth', settings.twoFactorAuth || false);
+    this.setChecked('login-notifications', settings.loginNotifications !== false);
+
+    // Store Settings
+    this.setValue('store-name', settings.storeName || 'SwiftBuy');
+    this.setValue('store-email', settings.storeEmail || 'admin@swiftbuy.com');
+    this.setValue('store-phone', settings.storePhone || '');
+    this.setValue('store-address', settings.storeAddress || '');
+    this.setValue('store-currency', settings.storeCurrency || 'USD');
+    this.setValue('store-country', settings.storeCountry || 'US');
+    this.setValue('store-language', settings.storeLanguage || 'en');
+    this.setValue('time-format', settings.timeFormat || '12');
+    this.setChecked('maintenance-mode', settings.maintenanceMode || false);
+    this.setChecked('guest-checkout', settings.guestCheckout !== false);
+    this.setChecked('customer-reviews', settings.customerReviews !== false);
+    this.setChecked('show-inventory', settings.showInventory !== false);
+
+    // Inventory Settings
+    this.setChecked('enable-stock-management', settings.enableStockManagement !== false);
+    this.setValue('low-stock-threshold', settings.lowStockThreshold || 5);
+    this.setValue('out-of-stock-threshold', settings.outOfStockThreshold || 0);
+    this.setValue('hold-stock', settings.holdStock || 60);
+    this.setChecked('low-stock-alerts', settings.lowStockAlerts !== false);
+    this.setChecked('out-of-stock-alerts', settings.outOfStockAlerts !== false);
+    this.setChecked('back-in-stock-alerts', settings.backInStockAlerts || false);
+    this.setValue('alert-frequency', settings.alertFrequency || 'immediate');
+    this.setChecked('enable-backorders', settings.enableBackorders || false);
+    this.setChecked('manage-stock-per-product', settings.manageStockPerProduct !== false);
+    this.setChecked('auto-update-inventory', settings.autoUpdateInventory !== false);
+
+    // Shipping Settings
+    this.setChecked('standard-shipping', settings.standardShipping !== false);
+    this.setValue('standard-shipping-cost', settings.standardShippingCost || 4.99);
+    this.setValue('free-shipping-threshold', settings.freeShippingThreshold || 50.00);
+    this.setChecked('express-shipping', settings.expressShipping !== false);
+    this.setValue('express-shipping-cost', settings.expressShippingCost || 9.99);
+    this.setChecked('international-shipping', settings.internationalShipping || false);
+    this.setValue('international-shipping-cost', settings.internationalShippingCost || 19.99);
+
+    // Payment Settings
+    this.setChecked('stripe-enabled', settings.stripeEnabled !== false);
+    this.setValue('stripe-publishable-key', settings.stripePublishableKey || '');
+    this.setValue('stripe-secret-key', settings.stripeSecretKey || '');
+    this.setChecked('paypal-enabled', settings.paypalEnabled || false);
+    this.setValue('paypal-client-id', settings.paypalClientId || '');
+    this.setValue('paypal-client-secret', settings.paypalClientSecret || '');
+    this.setChecked('bank-transfer-enabled', settings.bankTransferEnabled || false);
+    this.setValue('bank-account-details', settings.bankAccountDetails || '');
+    this.setValue('payment-currency', settings.paymentCurrency || 'USD');
+    this.setChecked('payment-test-mode', settings.paymentTestMode !== false);
+    this.setValue('payment-capture', settings.paymentCapture || 'auto');
+
+    // Notification Settings
+    this.setChecked('email-new-orders', settings.emailNewOrders !== false);
+    this.setChecked('email-low-stock', settings.emailLowStock !== false);
+    this.setChecked('email-new-customers', settings.emailNewCustomers || false);
+    this.setChecked('show-badges', settings.showBadges !== false);
+    this.setChecked('notification-sound', settings.notificationSound || false);
+    this.setValue('notification-timeout', settings.notificationTimeout || 5000);
+}
+
+setupSettingsEventListeners() {
+    // Settings navigation
+    document.querySelectorAll('.nav-item[data-tab]').forEach(item => {
+        item.addEventListener('click', (e) => {
+            this.switchSettingsTab(e.target.closest('.nav-item').dataset.tab);
+        });
+    });
+
+    // Save settings button
+    document.getElementById('save-settings').addEventListener('click', () => {
+        this.saveAllSettings();
+    });
+
+    // Reset settings button
+    document.getElementById('reset-settings').addEventListener('click', () => {
+        this.resetSettingsToDefaults();
+    });
+
+    // Auto-save on some changes
+    this.setupAutoSaveListeners();
+}
+
+initializeSettingsTabs() {
+    // Activate first tab by default
+    this.switchSettingsTab('general');
+}
+
+switchSettingsTab(tabId) {
+    // Update navigation
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.classList.remove('active');
+    });
+    document.querySelector(`[data-tab="${tabId}"]`).classList.add('active');
+
+    // Update content
+    document.querySelectorAll('.settings-tab').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    document.getElementById(`${tabId}-tab`).classList.add('active');
 }
 
 updateFunnelChart() {

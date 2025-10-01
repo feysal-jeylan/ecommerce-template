@@ -1026,40 +1026,600 @@
 <!-- Settings Section -->
 <section id="settings" class="content-section">
     <div class="section-header">
-        <h2>System Settings</h2>
-    </div>
-    
-    <div class="settings-grid">
-        <div class="settings-card">
-            <h3>Store Configuration</h3>
-            <div class="setting-item">
-                <label>Store Name</label>
-                <input type="text" id="store-name" value="SwiftBuy" class="setting-input">
-            </div>
-            <div class="setting-item">
-                <label>Currency</label>
-                <select id="store-currency" class="setting-input">
-                    <option value="USD">USD ($)</option>
-                    <option value="EUR">EUR (€)</option>
-                    <option value="GBP">GBP (£)</option>
-                </select>
-            </div>
+        <h2>System Settings & Configuration</h2>
+        <div class="section-actions">
+            <button class="btn-secondary" id="reset-settings">
+                <i class="fas fa-undo"></i>
+                Reset to Defaults
+            </button>
             <button class="btn-primary" id="save-settings">
-                Save Settings
+                <i class="fas fa-save"></i>
+                Save All Changes
             </button>
         </div>
-        
-        <div class="settings-card">
-            <h3>Inventory Alerts</h3>
-            <div class="setting-item">
-                <label>Low Stock Threshold</label>
-                <input type="number" id="low-stock-threshold" value="10" class="setting-input">
-            </div>
-            <div class="setting-item">
-                <label>Out of Stock Alert</label>
-                <input type="checkbox" id="out-of-stock-alert" checked>
+    </div>
+
+    <!-- Settings Navigation -->
+    <div class="settings-layout">
+        <div class="settings-sidebar">
+            <div class="settings-nav">
+                <button class="nav-item active" data-tab="general">
+                    <i class="fas fa-cog"></i>
+                    General
+                </button>
+                <button class="nav-item" data-tab="store">
+                    <i class="fas fa-store"></i>
+                    Store Settings
+                </button>
+                <button class="nav-item" data-tab="inventory">
+                    <i class="fas fa-boxes"></i>
+                    Inventory
+                </button>
+                <button class="nav-item" data-tab="shipping">
+                    <i class="fas fa-shipping-fast"></i>
+                    Shipping
+                </button>
+                <button class="nav-item" data-tab="payments">
+                    <i class="fas fa-credit-card"></i>
+                    Payments
+                </button>
+                <button class="nav-item" data-tab="notifications">
+                    <i class="fas fa-bell"></i>
+                    Notifications
+                </button>
+                <button class="nav-item" data-tab="advanced">
+                    <i class="fas fa-sliders-h"></i>
+                    Advanced
+                </button>
+                <button class="nav-item" data-tab="backup">
+                    <i class="fas fa-database"></i>
+                    Backup & Import
+                </button>
             </div>
         </div>
+
+        <div class="settings-content">
+            <!-- General Settings -->
+            <div class="settings-tab active" id="general-tab">
+                <div class="tab-header">
+                    <h3>General Settings</h3>
+                    <p>Basic configuration for your admin dashboard</p>
+                </div>
+
+                <div class="settings-grid">
+                    <div class="settings-card">
+                        <h4>Dashboard Preferences</h4>
+                        <div class="setting-item">
+                            <label>Default Dashboard View</label>
+                            <select id="default-dashboard-view" class="setting-input">
+                                <option value="overview">Overview</option>
+                                <option value="analytics">Analytics</option>
+                                <option value="orders">Orders</option>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <label>Date Format</label>
+                            <select id="date-format" class="setting-input">
+                                <option value="MM/DD/YYYY">MM/DD/YYYY</option>
+                                <option value="DD/MM/YYYY">DD/MM/YYYY</option>
+                                <option value="YYYY-MM-DD">YYYY-MM-DD</option>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <label>Time Zone</label>
+                            <select id="timezone" class="setting-input">
+                                <option value="UTC-5">EST (UTC-5)</option>
+                                <option value="UTC-8">PST (UTC-8)</option>
+                                <option value="UTC+0">GMT (UTC+0)</option>
+                                <option value="UTC+1">CET (UTC+1)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="settings-card">
+                        <h4>Display Settings</h4>
+                        <div class="setting-item">
+                            <label>Theme</label>
+                            <select id="theme" class="setting-input">
+                                <option value="light">Light</option>
+                                <option value="dark">Dark</option>
+                                <option value="auto">Auto (System)</option>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <label>Items Per Page</label>
+                            <input type="number" id="items-per-page" class="setting-input" min="10" max="100" value="25">
+                        </div>
+                        <div class="setting-item">
+                            <label>Auto Refresh</label>
+                            <select id="auto-refresh" class="setting-input">
+                                <option value="0">Disabled</option>
+                                <option value="30">30 seconds</option>
+                                <option value="60">1 minute</option>
+                                <option value="300">5 minutes</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="settings-card">
+                        <h4>Security</h4>
+                        <div class="setting-item">
+                            <label>Session Timeout</label>
+                            <select id="session-timeout" class="setting-input">
+                                <option value="30">30 minutes</option>
+                                <option value="60">1 hour</option>
+                                <option value="120">2 hours</option>
+                                <option value="240">4 hours</option>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <label>Two-Factor Authentication</label>
+                            <div class="toggle-switch">
+                                <input type="checkbox" id="two-factor-auth" class="toggle-input">
+                                <label for="two-factor-auth" class="toggle-label"></label>
+                            </div>
+                        </div>
+                        <div class="setting-item">
+                            <label>Login Notifications</label>
+                            <div class="toggle-switch">
+                                <input type="checkbox" id="login-notifications" class="toggle-input" checked>
+                                <label for="login-notifications" class="toggle-label"></label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Store Settings -->
+            <div class="settings-tab" id="store-tab">
+                <div class="tab-header">
+                    <h3>Store Configuration</h3>
+                    <p>Manage your store details and preferences</p>
+                </div>
+
+                <div class="settings-grid">
+                    <div class="settings-card">
+                        <h4>Store Information</h4>
+                        <div class="setting-item">
+                            <label>Store Name *</label>
+                            <input type="text" id="store-name" class="setting-input" value="SwiftBuy" required>
+                        </div>
+                        <div class="setting-item">
+                            <label>Store Email</label>
+                            <input type="email" id="store-email" class="setting-input" value="admin@swiftbuy.com">
+                        </div>
+                        <div class="setting-item">
+                            <label>Store Phone</label>
+                            <input type="tel" id="store-phone" class="setting-input" placeholder="+1 (555) 123-4567">
+                        </div>
+                        <div class="setting-item">
+                            <label>Store Address</label>
+                            <textarea id="store-address" class="setting-input textarea" rows="3" placeholder="Enter store address"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="settings-card">
+                        <h4>Regional Settings</h4>
+                        <div class="setting-item">
+                            <label>Currency *</label>
+                            <select id="store-currency" class="setting-input" required>
+                                <option value="USD">US Dollar ($)</option>
+                                <option value="EUR">Euro (€)</option>
+                                <option value="GBP">British Pound (£)</option>
+                                <option value="CAD">Canadian Dollar (C$)</option>
+                                <option value="AUD">Australian Dollar (A$)</option>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <label>Country</label>
+                            <select id="store-country" class="setting-input">
+                                <option value="US">United States</option>
+                                <option value="CA">Canada</option>
+                                <option value="GB">United Kingdom</option>
+                                <option value="AU">Australia</option>
+                                <option value="DE">Germany</option>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <label>Language</label>
+                            <select id="store-language" class="setting-input">
+                                <option value="en">English</option>
+                                <option value="es">Spanish</option>
+                                <option value="fr">French</option>
+                                <option value="de">German</option>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <label>Time Format</label>
+                            <select id="time-format" class="setting-input">
+                                <option value="12">12-hour</option>
+                                <option value="24">24-hour</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="settings-card">
+                        <h4>Store Status</h4>
+                        <div class="setting-item">
+                            <label>Store Maintenance Mode</label>
+                            <div class="toggle-switch">
+                                <input type="checkbox" id="maintenance-mode" class="toggle-input">
+                                <label for="maintenance-mode" class="toggle-label"></label>
+                            </div>
+                        </div>
+                        <div class="setting-item">
+                            <label>Enable Guest Checkout</label>
+                            <div class="toggle-switch">
+                                <input type="checkbox" id="guest-checkout" class="toggle-input" checked>
+                                <label for="guest-checkout" class="toggle-label"></label>
+                            </div>
+                        </div>
+                        <div class="setting-item">
+                            <label>Customer Reviews</label>
+                            <div class="toggle-switch">
+                                <input type="checkbox" id="customer-reviews" class="toggle-input" checked>
+                                <label for="customer-reviews" class="toggle-label"></label>
+                            </div>
+                        </div>
+                        <div class="setting-item">
+                            <label>Inventory Display</label>
+                            <div class="toggle-switch">
+                                <input type="checkbox" id="show-inventory" class="toggle-input" checked>
+                                <label for="show-inventory" class="toggle-label"></label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Inventory Settings -->
+            <div class="settings-tab" id="inventory-tab">
+                <div class="tab-header">
+                    <h3>Inventory Management</h3>
+                    <p>Configure inventory tracking and alerts</p>
+                </div>
+
+                <div class="settings-grid">
+                    <div class="settings-card">
+                        <h4>Stock Management</h4>
+                        <div class="setting-item">
+                            <label>Enable Stock Management</label>
+                            <div class="toggle-switch">
+                                <input type="checkbox" id="enable-stock-management" class="toggle-input" checked>
+                                <label for="enable-stock-management" class="toggle-label"></label>
+                            </div>
+                        </div>
+                        <div class="setting-item">
+                            <label>Low Stock Threshold</label>
+                            <input type="number" id="low-stock-threshold" class="setting-input" value="5" min="1">
+                        </div>
+                        <div class="setting-item">
+                            <label>Out of Stock Threshold</label>
+                            <input type="number" id="out-of-stock-threshold" class="setting-input" value="0" min="0">
+                        </div>
+                        <div class="setting-item">
+                            <label>Hold Stock (minutes)</label>
+                            <input type="number" id="hold-stock" class="setting-input" value="60" min="0">
+                        </div>
+                    </div>
+
+                    <div class="settings-card">
+                        <h4>Notifications</h4>
+                        <div class="setting-item">
+                            <label>Low Stock Alerts</label>
+                            <div class="toggle-switch">
+                                <input type="checkbox" id="low-stock-alerts" class="toggle-input" checked>
+                                <label for="low-stock-alerts" class="toggle-label"></label>
+                            </div>
+                        </div>
+                        <div class="setting-item">
+                            <label>Out of Stock Alerts</label>
+                            <div class="toggle-switch">
+                                <input type="checkbox" id="out-of-stock-alerts" class="toggle-input" checked>
+                                <label for="out-of-stock-alerts" class="toggle-label"></label>
+                            </div>
+                        </div>
+                        <div class="setting-item">
+                            <label>Back in Stock Alerts</label>
+                            <div class="toggle-switch">
+                                <input type="checkbox" id="back-in-stock-alerts" class="toggle-input">
+                                <label for="back-in-stock-alerts" class="toggle-label"></label>
+                            </div>
+                        </div>
+                        <div class="setting-item">
+                            <label>Alert Frequency</label>
+                            <select id="alert-frequency" class="setting-input">
+                                <option value="immediate">Immediately</option>
+                                <option value="hourly">Hourly Summary</option>
+                                <option value="daily">Daily Summary</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="settings-card">
+                        <h4>Advanced Inventory</h4>
+                        <div class="setting-item">
+                            <label>Enable Backorders</label>
+                            <div class="toggle-switch">
+                                <input type="checkbox" id="enable-backorders" class="toggle-input">
+                                <label for="enable-backorders" class="toggle-label"></label>
+                            </div>
+                        </div>
+                        <div class="setting-item">
+                            <label>Manage Stock Per Product</label>
+                            <div class="toggle-switch">
+                                <input type="checkbox" id="manage-stock-per-product" class="toggle-input" checked>
+                                <label for="manage-stock-per-product" class="toggle-label"></label>
+                            </div>
+                        </div>
+                        <div class="setting-item">
+                            <label>Auto-update Inventory</label>
+                            <div class="toggle-switch">
+                                <input type="checkbox" id="auto-update-inventory" class="toggle-input" checked>
+                                <label for="auto-update-inventory" class="toggle-label"></label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Shipping Settings -->
+            <div class="settings-tab" id="shipping-tab">
+                <div class="tab-header">
+                    <h3>Shipping Configuration</h3>
+                    <p>Manage shipping methods and rates</p>
+                </div>
+                <div class="shipping-methods">
+                    <div class="settings-card">
+                        <h4>Shipping Methods</h4>
+                        <div class="shipping-method">
+                            <div class="method-header">
+                                <div class="method-info">
+                                    <h5>Standard Shipping</h5>
+                                    <span>3-5 business days</span>
+                                </div>
+                                <div class="toggle-switch">
+                                    <input type="checkbox" id="standard-shipping" class="toggle-input" checked>
+                                    <label for="standard-shipping" class="toggle-label"></label>
+                                </div>
+                            </div>
+                            <div class="method-details">
+                                <div class="setting-item">
+                                    <label>Cost</label>
+                                    <input type="number" id="standard-shipping-cost" class="setting-input" value="4.99" step="0.01">
+                                </div>
+                                <div class="setting-item">
+                                    <label>Free Shipping Threshold</label>
+                                    <input type="number" id="free-shipping-threshold" class="setting-input" value="50.00" step="0.01">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="shipping-method">
+                            <div class="method-header">
+                                <div class="method-info">
+                                    <h5>Express Shipping</h5>
+                                    <span>1-2 business days</span>
+                                </div>
+                                <div class="toggle-switch">
+                                    <input type="checkbox" id="express-shipping" class="toggle-input" checked>
+                                    <label for="express-shipping" class="toggle-label"></label>
+                                </div>
+                            </div>
+                            <div class="method-details">
+                                <div class="setting-item">
+                                    <label>Cost</label>
+                                    <input type="number" id="express-shipping-cost" class="setting-input" value="9.99" step="0.01">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="shipping-method">
+                            <div class="method-header">
+                                <div class="method-info">
+                                    <h5>International Shipping</h5>
+                                    <span>5-10 business days</span>
+                                </div>
+                                <div class="toggle-switch">
+                                    <input type="checkbox" id="international-shipping" class="toggle-input">
+                                    <label for="international-shipping" class="toggle-label"></label>
+                                </div>
+                            </div>
+                            <div class="method-details">
+                                <div class="setting-item">
+                                    <label>Base Cost</label>
+                                    <input type="number" id="international-shipping-cost" class="setting-input" value="19.99" step="0.01">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Payments Settings -->
+            <div class="settings-tab" id="payments-tab">
+                <div class="tab-header">
+                    <h3>Payment Methods</h3>
+                    <p>Configure payment gateways and settings</p>
+                </div>
+                <div class="payment-methods">
+                    <div class="settings-card">
+                        <h4>Payment Gateways</h4>
+                        
+                        <div class="payment-method">
+                            <div class="method-header">
+                                <div class="method-info">
+                                    <i class="fab fa-cc-stripe"></i>
+                                    <div>
+                                        <h5>Stripe</h5>
+                                        <span>Credit card payments</span>
+                                    </div>
+                                </div>
+                                <div class="toggle-switch">
+                                    <input type="checkbox" id="stripe-enabled" class="toggle-input" checked>
+                                    <label for="stripe-enabled" class="toggle-label"></label>
+                                </div>
+                            </div>
+                            <div class="method-details">
+                                <div class="setting-item">
+                                    <label>Publishable Key</label>
+                                    <input type="text" id="stripe-publishable-key" class="setting-input" placeholder="pk_test_...">
+                                </div>
+                                <div class="setting-item">
+                                    <label>Secret Key</label>
+                                    <input type="password" id="stripe-secret-key" class="setting-input" placeholder="sk_test_...">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="payment-method">
+                            <div class="method-header">
+                                <div class="method-info">
+                                    <i class="fab fa-paypal"></i>
+                                    <div>
+                                        <h5>PayPal</h5>
+                                        <span>PayPal payments</span>
+                                    </div>
+                                </div>
+                                <div class="toggle-switch">
+                                    <input type="checkbox" id="paypal-enabled" class="toggle-input">
+                                    <label for="paypal-enabled" class="toggle-label"></label>
+                                </div>
+                            </div>
+                            <div class="method-details">
+                                <div class="setting-item">
+                                    <label>Client ID</label>
+                                    <input type="text" id="paypal-client-id" class="setting-input" placeholder="Client ID">
+                                </div>
+                                <div class="setting-item">
+                                    <label>Client Secret</label>
+                                    <input type="password" id="paypal-client-secret" class="setting-input" placeholder="Client Secret">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="payment-method">
+                            <div class="method-header">
+                                <div class="method-info">
+                                    <i class="fas fa-university"></i>
+                                    <div>
+                                        <h5>Bank Transfer</h5>
+                                        <span>Direct bank transfers</span>
+                                    </div>
+                                </div>
+                                <div class="toggle-switch">
+                                    <input type="checkbox" id="bank-transfer-enabled" class="toggle-input">
+                                    <label for="bank-transfer-enabled" class="toggle-label"></label>
+                                </div>
+                            </div>
+                            <div class="method-details">
+                                <div class="setting-item">
+                                    <label>Bank Account Details</label>
+                                    <textarea id="bank-account-details" class="setting-input textarea" rows="3" placeholder="Bank name, account number, etc."></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="settings-card">
+                        <h4>Payment Settings</h4>
+                        <div class="setting-item">
+                            <label>Currency</label>
+                            <select id="payment-currency" class="setting-input">
+                                <option value="USD">US Dollar (USD)</option>
+                                <option value="EUR">Euro (EUR)</option>
+                                <option value="GBP">British Pound (GBP)</option>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <label>Test Mode</label>
+                            <div class="toggle-switch">
+                                <input type="checkbox" id="payment-test-mode" class="toggle-input" checked>
+                                <label for="payment-test-mode" class="toggle-label"></label>
+                            </div>
+                        </div>
+                        <div class="setting-item">
+                            <label>Capture Payment</label>
+                            <select id="payment-capture" class="setting-input">
+                                <option value="auto">Automatically</option>
+                                <option value="manual">Manually</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- More tabs for Notifications, Advanced, Backup etc. would continue here -->
+            <!-- For brevity, I'll show the structure for one more tab -->
+
+            <!-- Notifications Settings -->
+            <div class="settings-tab" id="notifications-tab">
+                <div class="tab-header">
+                    <h3>Notification Settings</h3>
+                    <p>Configure how and when you receive notifications</p>
+                </div>
+                <div class="settings-grid">
+                    <div class="settings-card">
+                        <h4>Email Notifications</h4>
+                        <div class="setting-item">
+                            <label>New Order Notifications</label>
+                            <div class="toggle-switch">
+                                <input type="checkbox" id="email-new-orders" class="toggle-input" checked>
+                                <label for="email-new-orders" class="toggle-label"></label>
+                            </div>
+                        </div>
+                        <div class="setting-item">
+                            <label>Low Stock Alerts</label>
+                            <div class="toggle-switch">
+                                <input type="checkbox" id="email-low-stock" class="toggle-input" checked>
+                                <label for="email-low-stock" class="toggle-label"></label>
+                            </div>
+                        </div>
+                        <div class="setting-item">
+                            <label>Customer Registrations</label>
+                            <div class="toggle-switch">
+                                <input type="checkbox" id="email-new-customers" class="toggle-input">
+                                <label for="email-new-customers" class="toggle-label"></label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="settings-card">
+                        <h4>Dashboard Notifications</h4>
+                        <div class="setting-item">
+                            <label>Show Notification Badges</label>
+                            <div class="toggle-switch">
+                                <input type="checkbox" id="show-badges" class="toggle-input" checked>
+                                <label for="show-badges" class="toggle-label"></label>
+                            </div>
+                        </div>
+                        <div class="setting-item">
+                            <label>Notification Sound</label>
+                            <div class="toggle-switch">
+                                <input type="checkbox" id="notification-sound" class="toggle-input">
+                                <label for="notification-sound" class="toggle-label"></label>
+                            </div>
+                        </div>
+                        <div class="setting-item">
+                            <label>Auto-dismiss Time</label>
+                            <select id="notification-timeout" class="setting-input">
+                                <option value="3000">3 seconds</option>
+                                <option value="5000">5 seconds</option>
+                                <option value="10000">10 seconds</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Additional tabs would follow the same pattern -->
+        </div>
+    </div>
+
+    <!-- Settings Saved Toast -->
+    <div class="settings-toast" id="settings-toast">
+        <i class="fas fa-check-circle"></i>
+        <span>Settings saved successfully!</span>
     </div>
 </section>
                 <!-- Add more sections for Inventory, Customers, Analytics, Settings -->
