@@ -2997,8 +2997,12 @@ input[type="checkbox"] {
     0% { transform: translate(-50%, -50%) rotate(0deg); }
     100% { transform: translate(-50%, -50%) rotate(360deg); }
 }
-
 @media (max-width: 768px) {
+    .admin-main {
+        margin-left: 0;
+        width: 100vw;
+    }
+    
     .orders-table-container {
         margin: 0 -1rem;
         border-radius: 0;
@@ -3015,5 +3019,26 @@ input[type="checkbox"] {
     .action-buttons {
         flex-wrap: nowrap;
         min-width: 70px;
+    }
+}
+
+/* ← ADD THIS NEW MEDIA QUERY FOR DESKTOP WITH SIDEBAR */
+@media (min-width: 769px) and (max-width: 1400px) {
+    .orders-table {
+        min-width: 1000px; /* Adjust based on your content */
+    }
+}
+
+.section-actions {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    flex-wrap: wrap; /* ← ADD THIS LINE */
+}
+
+@media (max-width: 768px) {
+    .section-actions {
+        justify-content: flex-start;
+        gap: 0.5rem;
     }
 }
