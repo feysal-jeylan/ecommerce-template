@@ -171,6 +171,8 @@ body {
     transition: var(--admin-transition);
     min-height: 100vh;
     position: relative;
+    width: calc(100vw - 280px); /* ← ADD THIS LINE */
+    overflow-x: hidden; /* ← ADD THIS LINE */
 }
 
 .admin-sidebar.collapsed ~ .admin-main {
@@ -626,14 +628,16 @@ body {
     border-radius: var(--admin-radius);
     box-shadow: var(--admin-shadow);
     border: 1px solid var(--admin-border);
-    overflow-x: auto; /* Horizontal scroll for tables */
+    overflow-x: auto;
     position: relative;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%; /* ← ADD THIS LINE */
 }
 
 .orders-table {
     width: 100%;
     border-collapse: collapse;
-    min-width: 800px; /* Ensure table doesn't get too narrow */
+    min-width: 900px; /* ← CHANGE TO FIXED MIN-WIDTH */
 }
 
 .orders-table th {
@@ -2992,4 +2996,24 @@ input[type="checkbox"] {
 @keyframes spin {
     0% { transform: translate(-50%, -50%) rotate(0deg); }
     100% { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+@media (max-width: 768px) {
+    .orders-table-container {
+        margin: 0 -1rem;
+        border-radius: 0;
+        border-left: none;
+        border-right: none;
+    }
+    
+    .orders-table th,
+    .orders-table td {
+        padding: 0.75rem 1rem;
+        font-size: 0.85rem;
+    }
+    
+    .action-buttons {
+        flex-wrap: nowrap;
+        min-width: 70px;
+    }
 }
