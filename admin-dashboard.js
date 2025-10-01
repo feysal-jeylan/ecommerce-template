@@ -1168,6 +1168,18 @@ openAddProductModal() {
     // ===== EVENT HANDLERS =====
     setupEventListeners() {
 
+        // View All links in dashboard
+document.addEventListener('click', (e) => {
+    if (e.target.classList.contains('view-all')) {
+        e.preventDefault();
+        const href = e.target.getAttribute('href');
+        if (href) {
+            const sectionId = href.substring(1); // Remove the #
+            this.switchSection(sectionId);
+        }
+    }
+});
+
         this.setupAddProductModal();
 
 
@@ -2905,6 +2917,8 @@ saveNewProduct(productData, status) {
         
     }, 1500);
 }
+
+
 }
 
 // ===== INITIALIZATION =====
