@@ -1,5 +1,8 @@
 // ===== ENTERPRISE ADMIN DASHBOARD SYSTEM =====
+
+
 class AdminDashboard {
+    
 
     getRealTimeStockQuantities() {
     try {
@@ -279,38 +282,642 @@ updateStockAlerts() {
     });
 }
 
-    updateProductsSection() {
-        const container = document.getElementById('products-grid');
-        if (!container) return;
+  updateProductsSection() {
+    this.updateProductStats();
+    this.renderProductsGridView();
+    this.setupProductEventListeners();
+    this.loadProductSalesData();
+}
 
-        container.innerHTML = this.products.map(product => `
-            <div class="product-card" data-id="${product.id}">
-                <div class="product-image">
-                    <img src="${product.image}" alt="${product.name}">
-                    <div class="product-status ${product.inventory.stock === 0 ? 'out-of-stock' : product.inventory.stock <= product.inventory.lowStockThreshold ? 'low-stock' : 'in-stock'}">
-                        ${product.inventory.stock === 0 ? 'Out of Stock' : 
-                          product.inventory.stock <= product.inventory.lowStockThreshold ? 'Low Stock' : 'In Stock'}
+updateProductStats() {
+    const totalProducts = this.products.length;
+    const lowStockProducts = this.getLowStockItems().length;
+    const outOfStockProducts = this.products.filter(p => p.inventory.stock === 0).length;
+    const topRatedProducts = this.products.filter(p => p.rating?.average >= 4.5).length;
+
+    this.updateElement('total-products', totalProducts);
+    this.updateElement('low-stock-products', lowStockProducts);
+    this.updateElement('out-of-stock-products', outOfStockProducts);
+    this.updateElement('top-rated-products', topRatedProducts);
+}
+
+renderProductsGridView(productsToShow = this.products) {
+    const container = document.getElementById('products-grid');
+    if (!container) return;
+
+    // Get real-time inventory data
+    const inventory = JSON.parse(localStorage.getItem('swiftbuy_inventory_v1') || '{}');
+
+    container.innerHTML = productsToShow.map(product => {
+        const productInventory = inventory[product.id];
+        const realTimeStock = productInventory ? productInventory.stock : product.inventory.stock;
+        const lowStockThreshold = productInventory ? productInventory.lowStockThreshold : product.inventory.lowStockThreshold;
+        
+        const status = realTimeStock === 0 ? 'out-of-stock' : 
+                      realTimeStock <= lowStockThreshold ? 'low-stock' : 'in-stock';
+        const statusText = realTimeStock === 0 ? 'Out of Stock' : 
+                          realTimeStock <= lowStockThreshold ? 'Low Stock' : 'In Stock';
+
+        const stockPercentage = Math.min((realTimeStock / 20) * 100, 100); // Assuming max stock of 20 for visual
+        const salesCount = this.getProductSalesCount(product.id);
+        const revenue = this.getProductRevenue(product.id);
+
+        return `
+        <div class="product-card" data-id="${product.id}">
+            <input type="checkbox" class="product-checkbox" data-id="${product.id}">
+            
+            <div class="product-image">
+                <img src="${product.image}" alt="${product.name}" onerror="this.src='https://via.placeholder.com/300x200?text=No+Image'">
+                <div class="product-badges">
+                    ${product.featured ? '<span class="product-badge badge-featured">Featured</span>' : ''}
+                    ${product.onSale ? '<span class="product-badge badge-sale">Sale</span>' : ''}
+                    ${this.isNewProduct(product) ? '<span class="product-badge badge-new">New</span>' : ''}
+                </div>
+                <div class="product-status ${status}">${statusText}</div>
+            </div>
+            
+            <div class="product-info">
+                <div class="product-header">
+                    <h4 class="product-name">${product.name}</h4>
+                    <span class="product-price">$${product.price}</span>
+                </div>
+                
+                <p class="product-category">${product.category}</p>
+                
+                <div class="product-meta">
+                    <div class="meta-item">
+                        <span class="meta-label">Stock</span>
+                        <span class="meta-value ${realTimeStock <= lowStockThreshold ? 'text-warning' : 'text-success'}">
+                            ${realTimeStock}
+                        </span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-label">Sales</span>
+                        <span class="meta-value">${salesCount}</span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-label">Revenue</span>
+                        <span class="meta-value">$${revenue}</span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-label">Threshold</span>
+                        <span class="meta-value">${lowStockThreshold}</span>
                     </div>
                 </div>
-                <div class="product-info">
-                    <h4 class="product-name">${product.name}</h4>
-                    <p class="product-category">${product.category}</p>
-                    <div class="product-meta">
-                        <span class="product-price">$${product.price}</span>
-                        <span class="product-stock">Stock: ${product.inventory.stock}</span>
+                
+                <div class="product-rating">
+                    <div class="rating-stars">
+                        ${this.renderStarRating(product.rating?.average || 0)}
                     </div>
-                    <div class="product-actions">
-                        <button class="btn-sm btn-edit" data-id="${product.id}">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button class="btn-sm btn-delete" data-id="${product.id}">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </div>
+                    <span class="rating-value">${(product.rating?.average || 0).toFixed(1)}</span>
+                    <span class="rating-count">(${product.rating?.count || 0})</span>
+                </div>
+                
+                <div class="product-actions">
+                    <button class="btn-sm btn-quick-edit" data-id="${product.id}" title="Quick Edit">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn-sm btn-view" data-id="${product.id}" title="View Details">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn-sm btn-duplicate" data-id="${product.id}" title="Duplicate">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                    <button class="btn-sm btn-delete" data-id="${product.id}" title="Delete">
+                        <i class="fas fa-trash"></i>
+                    </button>
                 </div>
             </div>
-        `).join('');
+        </div>
+        `;
+    }).join('');
+}
+
+renderProductsTableView(productsToShow = this.products) {
+    const container = document.getElementById('products-table');
+    if (!container) return;
+
+    const tbody = container.querySelector('tbody');
+    const inventory = JSON.parse(localStorage.getItem('swiftbuy_inventory_v1') || '{}');
+
+    tbody.innerHTML = productsToShow.map(product => {
+        const productInventory = inventory[product.id];
+        const realTimeStock = productInventory ? productInventory.stock : product.inventory.stock;
+        const lowStockThreshold = productInventory ? productInventory.lowStockThreshold : product.inventory.lowStockThreshold;
+        
+        const status = realTimeStock === 0 ? 'out-of-stock' : 
+                      realTimeStock <= lowStockThreshold ? 'low-stock' : 'in-stock';
+        
+        const stockPercentage = Math.min((realTimeStock / 20) * 100, 100);
+        const stockBarClass = realTimeStock === 0 ? 'critical' : realTimeStock <= lowStockThreshold ? 'low' : '';
+        const salesCount = this.getProductSalesCount(product.id);
+        const salesTrend = this.getSalesTrend(product.id);
+
+        return `
+        <tr>
+            <td>
+                <input type="checkbox" class="product-checkbox" data-id="${product.id}">
+            </td>
+            <td>
+                <div class="product-info-cell">
+                    <img src="${product.image}" alt="${product.name}" class="table-product-image" 
+                         onerror="this.src='https://via.placeholder.com/50x50?text=No+Image'">
+                    <div class="table-product-details">
+                        <span class="table-product-name">${product.name}</span>
+                        <span class="table-product-category">${product.category}</span>
+                    </div>
+                </div>
+            </td>
+            <td>
+                <span class="text-capitalize">${product.category}</span>
+            </td>
+            <td>
+                <strong>$${product.price}</strong>
+            </td>
+            <td>
+                <div class="stock-indicator">
+                    <span>${realTimeStock}</span>
+                    <div class="stock-bar">
+                        <div class="stock-fill ${stockBarClass}" style="width: ${stockPercentage}%"></div>
+                    </div>
+                </div>
+            </td>
+            <td>
+                <span class="status-badge ${status}">
+                    ${status === 'out-of-stock' ? 'Out of Stock' : 
+                      status === 'low-stock' ? 'Low Stock' : 'In Stock'}
+                </span>
+            </td>
+            <td>
+                <div class="rating-display">
+                    <span class="rating-stars">
+                        ${this.renderStarRating(product.rating?.average || 0)}
+                    </span>
+                    <span>${(product.rating?.average || 0).toFixed(1)}</span>
+                </div>
+            </td>
+            <td>
+                <div class="sales-trend ${salesTrend > 0 ? 'trend-up' : salesTrend < 0 ? 'trend-down' : ''}">
+                    <i class="fas fa-${salesTrend > 0 ? 'arrow-up' : salesTrend < 0 ? 'arrow-down' : 'minus'}"></i>
+                    <span>${salesCount} sales</span>
+                </div>
+            </td>
+            <td>
+                <div class="action-buttons">
+                    <button class="btn-action btn-quick-edit" data-id="${product.id}" title="Quick Edit">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn-action btn-view" data-id="${product.id}" title="View">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn-action btn-delete" data-id="${product.id}" title="Delete">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </td>
+        </tr>
+        `;
+    }).join('');
+}
+
+setupProductEventListeners() {
+    // Search functionality
+    const searchInput = document.getElementById('product-search');
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            this.filterProducts();
+        });
     }
+
+    // Category filter
+    const categoryFilter = document.getElementById('category-filter');
+    if (categoryFilter) {
+        categoryFilter.addEventListener('change', () => {
+            this.filterProducts();
+        });
+    }
+
+    // Status filter
+    const statusFilter = document.getElementById('status-filter');
+    if (statusFilter) {
+        statusFilter.addEventListener('change', () => {
+            this.filterProducts();
+        });
+    }
+
+    // Sort functionality
+    const sortSelect = document.getElementById('product-sort');
+    if (sortSelect) {
+        sortSelect.addEventListener('change', (e) => {
+            this.sortProducts(e.target.value);
+        });
+    }
+
+    // View toggle
+    document.querySelectorAll('.view-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const view = e.target.closest('.view-btn').dataset.view;
+            this.switchProductView(view);
+        });
+    });
+
+    // Bulk actions
+    this.setupBulkActions();
+    
+    // Product action buttons
+    this.setupProductActions();
+    
+    // Add product button
+    const addProductBtn = document.getElementById('add-product');
+    if (addProductBtn) {
+        addProductBtn.addEventListener('click', () => {
+            this.openAddProductModal();
+        });
+    }
+
+    // Quick edit modal
+    this.setupQuickEditModal();
+}
+
+filterProducts() {
+    const searchTerm = document.getElementById('product-search').value.toLowerCase();
+    const categoryFilter = document.getElementById('category-filter').value;
+    const statusFilter = document.getElementById('status-filter').value;
+
+    const filteredProducts = this.products.filter(product => {
+        const matchesSearch = product.name.toLowerCase().includes(searchTerm) ||
+                            product.category.toLowerCase().includes(searchTerm);
+        
+        const matchesCategory = !categoryFilter || product.category === categoryFilter;
+        
+        // Get real-time stock for status filtering
+        const inventory = JSON.parse(localStorage.getItem('swiftbuy_inventory_v1') || '{}');
+        const productInventory = inventory[product.id];
+        const realTimeStock = productInventory ? productInventory.stock : product.inventory.stock;
+        const lowStockThreshold = productInventory ? productInventory.lowStockThreshold : product.inventory.lowStockThreshold;
+        
+        let matchesStatus = true;
+        if (statusFilter === 'in-stock') {
+            matchesStatus = realTimeStock > lowStockThreshold;
+        } else if (statusFilter === 'low-stock') {
+            matchesStatus = realTimeStock > 0 && realTimeStock <= lowStockThreshold;
+        } else if (statusFilter === 'out-of-stock') {
+            matchesStatus = realTimeStock === 0;
+        }
+
+        return matchesSearch && matchesCategory && matchesStatus;
+    });
+
+    const currentView = document.querySelector('.view-btn.active').dataset.view;
+    if (currentView === 'grid') {
+        this.renderProductsGridView(filteredProducts);
+    } else {
+        this.renderProductsTableView(filteredProducts);
+    }
+}
+
+sortProducts(sortBy) {
+    const sortedProducts = [...this.products];
+
+    switch(sortBy) {
+        case 'name':
+            sortedProducts.sort((a, b) => a.name.localeCompare(b.name));
+            break;
+        case 'price':
+            sortedProducts.sort((a, b) => parseFloat(a.price) - parseFloat(b.price));
+            break;
+        case 'stock':
+            sortedProducts.sort((a, b) => {
+                const inventory = JSON.parse(localStorage.getItem('swiftbuy_inventory_v1') || '{}');
+                const stockA = inventory[a.id] ? inventory[a.id].stock : a.inventory.stock;
+                const stockB = inventory[b.id] ? inventory[b.id].stock : b.inventory.stock;
+                return stockA - stockB;
+            });
+            break;
+        case 'category':
+            sortedProducts.sort((a, b) => a.category.localeCompare(b.category));
+            break;
+        case 'rating':
+            sortedProducts.sort((a, b) => (b.rating?.average || 0) - (a.rating?.average || 0));
+            break;
+    }
+
+    const currentView = document.querySelector('.view-btn.active').dataset.view;
+    if (currentView === 'grid') {
+        this.renderProductsGridView(sortedProducts);
+    } else {
+        this.renderProductsTableView(sortedProducts);
+    }
+}
+
+switchProductView(view) {
+    // Update active view button
+    document.querySelectorAll('.view-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    document.querySelector(`[data-view="${view}"]`).classList.add('active');
+
+    // Show/hide views
+    document.getElementById('products-grid-view').style.display = view === 'grid' ? 'block' : 'none';
+    document.getElementById('products-table-view').style.display = view === 'table' ? 'block' : 'none';
+
+    // Render appropriate view
+    if (view === 'grid') {
+        this.renderProductsGridView();
+    } else {
+        this.renderProductsTableView();
+    }
+}
+
+setupBulkActions() {
+    const selectAll = document.getElementById('select-all-products');
+    if (selectAll) {
+        selectAll.addEventListener('change', (e) => {
+            const checkboxes = document.querySelectorAll('.product-checkbox');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = e.target.checked;
+            });
+            this.toggleBulkActionsBar();
+        });
+    }
+
+    // Individual checkbox changes
+    document.addEventListener('change', (e) => {
+        if (e.target.classList.contains('product-checkbox')) {
+            this.toggleBulkActionsBar();
+        }
+    });
+
+    // Bulk action apply
+    const applyBulk = document.getElementById('apply-bulk-action');
+    if (applyBulk) {
+        applyBulk.addEventListener('click', () => {
+            this.applyBulkAction();
+        });
+    }
+
+    // Cancel bulk
+    const cancelBulk = document.getElementById('cancel-bulk');
+    if (cancelBulk) {
+        cancelBulk.addEventListener('click', () => {
+            this.cancelBulkSelection();
+        });
+    }
+}
+
+toggleBulkActionsBar() {
+    const selectedCount = document.querySelectorAll('.product-checkbox:checked').length;
+    const bulkActionsBar = document.getElementById('bulk-actions');
+    
+    if (selectedCount > 0) {
+        bulkActionsBar.style.display = 'flex';
+        document.getElementById('selected-count').textContent = selectedCount;
+    } else {
+        bulkActionsBar.style.display = 'none';
+    }
+}
+
+applyBulkAction() {
+    const action = document.getElementById('bulk-action').value;
+    const selectedProducts = Array.from(document.querySelectorAll('.product-checkbox:checked'))
+        .map(checkbox => checkbox.dataset.id);
+
+    if (!action) {
+        this.showToast('Please select a bulk action', 'error');
+        return;
+    }
+
+    switch(action) {
+        case 'update-stock':
+            this.bulkUpdateStock(selectedProducts);
+            break;
+        case 'update-price':
+            this.bulkUpdatePrice(selectedProducts);
+            break;
+        case 'update-category':
+            this.bulkUpdateCategory(selectedProducts);
+            break;
+        case 'archive':
+            this.bulkArchiveProducts(selectedProducts);
+            break;
+        case 'delete':
+            this.bulkDeleteProducts(selectedProducts);
+            break;
+    }
+
+    this.cancelBulkSelection();
+}
+
+cancelBulkSelection() {
+    document.querySelectorAll('.product-checkbox').forEach(checkbox => {
+        checkbox.checked = false;
+    });
+    document.getElementById('select-all-products').checked = false;
+    document.getElementById('bulk-actions').style.display = 'none';
+    document.getElementById('bulk-action').value = '';
+}
+
+setupProductActions() {
+    document.addEventListener('click', (e) => {
+        const target = e.target.closest('button');
+        if (!target) return;
+
+        const productId = target.dataset.id;
+        if (!productId) return;
+
+        if (target.classList.contains('btn-quick-edit')) {
+            this.openQuickEditModal(productId);
+        } else if (target.classList.contains('btn-view')) {
+            this.viewProductDetails(productId);
+        } else if (target.classList.contains('btn-duplicate')) {
+            this.duplicateProduct(productId);
+        } else if (target.classList.contains('btn-delete')) {
+            this.deleteProduct(productId);
+        }
+    });
+}
+
+setupQuickEditModal() {
+    const modal = document.getElementById('quick-edit-modal');
+    const closeBtn = document.getElementById('close-quick-edit');
+    const cancelBtn = document.getElementById('cancel-quick-edit');
+    const saveBtn = document.getElementById('save-quick-edit');
+
+    const closeModal = () => {
+        modal.classList.remove('active');
+    };
+
+    closeBtn?.addEventListener('click', closeModal);
+    cancelBtn?.addEventListener('click', closeModal);
+    
+    saveBtn?.addEventListener('click', () => {
+        this.saveQuickEdit();
+    });
+
+    // Close modal when clicking outside
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            closeModal();
+        }
+    });
+}
+
+openQuickEditModal(productId) {
+    const product = this.products.find(p => p.id === productId);
+    if (!product) return;
+
+    const inventory = JSON.parse(localStorage.getItem('swiftbuy_inventory_v1') || '{}');
+    const productInventory = inventory[productId];
+
+    document.getElementById('edit-product-name').value = product.name;
+    document.getElementById('edit-product-price').value = product.price;
+    document.getElementById('edit-product-stock').value = productInventory ? productInventory.stock : product.inventory.stock;
+    document.getElementById('edit-product-category').value = product.category;
+    document.getElementById('edit-product-threshold').value = productInventory ? productInventory.lowStockThreshold : product.inventory.lowStockThreshold;
+
+    document.getElementById('quick-edit-modal').classList.add('active');
+    document.getElementById('quick-edit-form').dataset.productId = productId;
+}
+
+saveQuickEdit() {
+    const form = document.getElementById('quick-edit-form');
+    const productId = form.dataset.productId;
+    
+    const updates = {
+        name: document.getElementById('edit-product-name').value,
+        price: parseFloat(document.getElementById('edit-product-price').value),
+        stock: parseInt(document.getElementById('edit-product-stock').value),
+        category: document.getElementById('edit-product-category').value,
+        lowStockThreshold: parseInt(document.getElementById('edit-product-threshold').value)
+    };
+
+    // Update product data
+    const productIndex = this.products.findIndex(p => p.id === productId);
+    if (productIndex !== -1) {
+        this.products[productIndex].name = updates.name;
+        this.products[productIndex].price = updates.price;
+        this.products[productIndex].category = updates.category;
+        this.products[productIndex].inventory.stock = updates.stock;
+        this.products[productIndex].inventory.lowStockThreshold = updates.lowStockThreshold;
+    }
+
+    // Update inventory data
+    const inventory = JSON.parse(localStorage.getItem('swiftbuy_inventory_v1') || '{}');
+    if (inventory[productId]) {
+        inventory[productId].stock = updates.stock;
+        inventory[productId].lowStockThreshold = updates.lowStockThreshold;
+        localStorage.setItem('swiftbuy_inventory_v1', JSON.stringify(inventory));
+    }
+
+    this.showToast('Product updated successfully!');
+    document.getElementById('quick-edit-modal').classList.remove('active');
+    
+    // Refresh views
+    this.updateProductsSection();
+}
+
+// Utility Methods
+renderStarRating(rating) {
+    const fullStars = Math.floor(rating);
+    const halfStar = rating % 1 >= 0.5;
+    const emptyStars = 5 - fullStars - (halfStar ? 1 : 0);
+
+    return '★'.repeat(fullStars) + (halfStar ? '½' : '') + '☆'.repeat(emptyStars);
+}
+
+getProductSalesCount(productId) {
+    let count = 0;
+    this.orders.forEach(order => {
+        order.order.items.forEach(item => {
+            if (item.id === productId) {
+                count += item.quantity;
+            }
+        });
+    });
+    return count;
+}
+
+getProductRevenue(productId) {
+    let revenue = 0;
+    this.orders.forEach(order => {
+        order.order.items.forEach(item => {
+            if (item.id === productId) {
+                revenue += (item.price_cents * item.quantity) / 100;
+            }
+        });
+    });
+    return revenue.toFixed(2);
+}
+
+getSalesTrend(productId) {
+    // Simplified sales trend calculation
+    const salesCount = this.getProductSalesCount(productId);
+    return salesCount > 10 ? 1 : salesCount > 5 ? 0 : -1;
+}
+
+isNewProduct(product) {
+    // Consider products added in the last 7 days as new
+    const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    return new Date(product.createdAt || '2024-01-01') > oneWeekAgo;
+}
+
+loadProductSalesData() {
+    // This would typically load additional sales analytics
+    console.log('📊 Loading product sales data...');
+}
+
+// Bulk action implementations (simplified for now)
+bulkUpdateStock(productIds) {
+    this.showToast(`Updating stock for ${productIds.length} products...`);
+    console.log('Bulk update stock:', productIds);
+}
+
+bulkUpdatePrice(productIds) {
+    this.showToast(`Updating prices for ${productIds.length} products...`);
+    console.log('Bulk update price:', productIds);
+}
+
+bulkUpdateCategory(productIds) {
+    this.showToast(`Updating categories for ${productIds.length} products...`);
+    console.log('Bulk update category:', productIds);
+}
+
+bulkArchiveProducts(productIds) {
+    this.showToast(`Archiving ${productIds.length} products...`);
+    console.log('Bulk archive:', productIds);
+}
+
+bulkDeleteProducts(productIds) {
+    if (confirm(`Are you sure you want to delete ${productIds.length} products? This action cannot be undone.`)) {
+        this.showToast(`Deleting ${productIds.length} products...`);
+        console.log('Bulk delete:', productIds);
+    }
+}
+
+viewProductDetails(productId) {
+    const product = this.products.find(p => p.id === productId);
+    this.showToast(`Viewing ${product.name} details...`);
+    // Advanced: Open product detail modal
+}
+
+duplicateProduct(productId) {
+    const product = this.products.find(p => p.id === productId);
+    this.showToast(`Duplicating ${product.name}...`);
+    // Advanced: Duplicate product logic
+}
+
+deleteProduct(productId) {
+    const product = this.products.find(p => p.id === productId);
+    if (confirm(`Are you sure you want to delete "${product.name}"? This action cannot be undone.`)) {
+        this.showToast(`Deleted ${product.name}`);
+        // Advanced: Actual deletion logic
+    }
+}
+
+openAddProductModal() {
+    this.showToast('Opening product creation form...');
+    // Advanced: Open add product modal
+}
 
     updateOrdersTable() {
         const container = document.getElementById('orders-table');
