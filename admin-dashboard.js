@@ -3,6 +3,7 @@
 
 class AdminDashboard {
     
+// to here
 
     getRealTimeStockQuantities() {
     try {
@@ -1243,6 +1244,25 @@ document.querySelector('.sidebar-toggle').addEventListener('click', () => {
             this.exportOrdersToCSV();
         });
         this.setupStatsCardInteractions()
+
+           // ORDER ACTION BUTTONS - Add this exact code
+    document.addEventListener('click', (e) => {
+        // Check if click is on view-order button or its child icon
+        if (e.target.closest('.view-order')) {
+            const button = e.target.closest('.view-order');
+            const orderId = button.dataset.id;
+            console.log('View order clicked:', orderId);
+            this.viewOrderDetails(orderId);
+        }
+        
+        // Check if click is on update-status button or its child icon
+        if (e.target.closest('.update-status')) {
+            const button = e.target.closest('.update-status');
+            const orderId = button.dataset.id;
+            console.log('Update status clicked:', orderId);
+            this.updateOrderStatus(orderId);
+        }
+    });
     }
 
     // From here
@@ -2919,7 +2939,232 @@ saveNewProduct(productData, status) {
 }
 
 
+showOrderDetailsModal(order) {
+    // Create modal HTML
+    const modalHTML = `
+        <div class="modal active" id="order-details-modal">
+            <div class="modal-content large-modal">
+                <div class="modal-header">
+                    <h3>Order Details - #${order.order.orderId}</h3>
+                    <button class="modal-close" onclick="this.closest('.modal').remove()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="order-details-grid">
+                        <div class="order-section">
+                            <h4>Customer Information</h4>
+                            <div class="info-grid">
+                                <div class="info-item">
+                                    <label>Name:</label>
+                                    <span>${order.shipping.firstName} ${order.shipping.lastName}</span>
+                                </div>
+                                <div class="info-item">
+                                    <label>Email:</label>
+                                    <span>${order.shipping.email}</span>
+                                </div>
+                                <div class="info-item">
+                                    <label>Phone:</label>
+                                    <span>${order.shipping.phone || 'Not provided'}</span>
+                                </div>
+                            </div>
+                        </div>
 
+                        <div class="order-section">
+                            <h4>Shipping Address</h4>
+                            <div class="address-box">
+                                <p>${order.shipping.address}</p>
+                                <p>${order.shipping.city}, ${order.shipping.state} ${order.shipping.zipCode}</p>
+                                <p>${order.shipping.country || 'United States'}</p>
+                            </div>
+                        </div>
+
+                        <div class="order-section">
+                            <h4>Order Items</h4>
+                            <div class="order-items">
+                                ${order.order.items.map(item => `
+                                    <div class="order-item">
+                                        <img src="${item.image}" alt="${item.name}" 
+                                             onerror="this.src='https://via.placeholder.com/60x60?text=Product'">
+                                        <div class="item-details">
+                                            <strong>${item.name}</strong>
+                                            <span>Quantity: ${item.quantity}</span>
+                                        </div>
+                                        <div class="item-price">
+                                            $${((item.price_cents * item.quantity) / 100).toFixed(2)}
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+
+                        <div class="order-section">
+                            <h4>Order Summary</h4>
+                            <div class="summary-grid">
+                                <div class="summary-item">
+                                    <span>Subtotal:</span>
+                                    <span>$${order.order.total.toFixed(2)}</span>
+                                </div>
+                                <div class="summary-item">
+                                    <span>Shipping:</span>
+                                    <span>$0.00</span>
+                                </div>
+                                <div class="summary-item">
+                                    <span>Tax:</span>
+                                    <span>$0.00</span>
+                                </div>
+                                <div class="summary-item total">
+                                    <strong>Total:</strong>
+                                    <strong>$${order.order.total.toFixed(2)}</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn-secondary" onclick="this.closest('.modal').remove()">
+                        Close
+                    </button>
+                    <button class="btn-primary" onclick="adminDashboard.printOrder('${order.order.orderId}')">
+                        <i class="fas fa-print"></i>
+                        Print Order
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Add to DOM
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+}
+
+showOrderStatusModal(order) {
+    const statusOptions = [
+        { value: 'ordered', label: 'Order Placed', color: '#64748b' },
+        { value: 'confirmed', label: 'Confirmed', color: '#3b82f6' },
+        { value: 'processing', label: 'Processing', color: '#8b5cf6' },
+        { value: 'shipped', label: 'Shipped', color: '#f59e0b' },
+        { value: 'out-for-delivery', label: 'Out for Delivery', color: '#ef4444' },
+        { value: 'delivered', label: 'Delivered', color: '#10b981' }
+    ];
+
+    const currentStatus = order.tracking?.status || 'ordered';
+    
+    const modalHTML = `
+        <div class="modal active" id="order-status-modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Update Order Status - #${order.order.orderId}</h3>
+                    <button class="modal-close" onclick="this.closest('.modal').remove()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="status-current">
+                        <h4>Current Status</h4>
+                        <div class="current-status-badge">
+                            <span class="status-badge ${currentStatus}">
+                                ${this.formatStatus(currentStatus)}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="status-options">
+                        <h4>Update Status</h4>
+                        <div class="status-buttons">
+                            ${statusOptions.map(status => `
+                                <button class="status-option ${status.value === currentStatus ? 'active' : ''}" 
+                                        data-status="${status.value}"
+                                        onclick="adminDashboard.updateOrderStatusAction('${order.order.orderId}', '${status.value}')">
+                                    <span class="status-dot" style="background: ${status.color}"></span>
+                                    ${status.label}
+                                </button>
+                            `).join('')}
+                        </div>
+                    </div>
+
+                    <div class="status-notes">
+                        <label>Add Note (Optional)</label>
+                        <textarea class="status-note-input" placeholder="Add a note about this status update..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn-cancel" onclick="this.closest('.modal').remove()">
+                        Cancel
+                    </button>
+                    <button class="btn-primary" onclick="adminDashboard.sendStatusNotification('${order.order.orderId}')">
+                        <i class="fas fa-bell"></i>
+                        Notify Customer
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+}
+
+updateOrderStatusAction(orderId, newStatus) {
+    const order = this.orders.find(o => o.order.orderId === orderId);
+    if (order) {
+        // Initialize tracking if it doesn't exist
+        if (!order.tracking) {
+            order.tracking = {};
+        }
+        
+        // Update status
+        order.tracking.status = newStatus;
+        order.tracking.lastUpdated = new Date().toISOString();
+        
+        // Save to localStorage
+        localStorage.setItem('swiftbuy_orders', JSON.stringify(this.orders));
+        
+        // Update the UI
+        this.updateOrdersTable();
+        
+        this.showToast(`Order status updated to: ${this.formatStatus(newStatus)}`);
+        
+        // Close the modal
+        const modal = document.getElementById('order-status-modal');
+        if (modal) modal.remove();
+    }
+}
+
+sendStatusNotification(orderId) {
+    this.showToast(`Status notification sent to customer for order #${orderId}`);
+    // In a real app, this would trigger an email/SMS notification
+}
+
+printOrder(orderId) {
+    this.showToast(`Printing order #${orderId}`);
+    // In a real app, this would open print dialog with order details
+}
+
+formatStatus(status) {
+    const statusMap = {
+        'ordered': 'Order Placed',
+        'confirmed': 'Confirmed',
+        'processing': 'Processing',
+        'shipped': 'Shipped',
+        'out-for-delivery': 'Out for Delivery',
+        'delivered': 'Delivered'
+    };
+    return statusMap[status] || status;
+}
+
+viewOrderDetails(orderId) {
+    const order = this.orders.find(o => o.order.orderId === orderId);
+    if (order) {
+        this.showOrderDetailsModal(order);
+    }
+}
+
+updateOrderStatus(orderId) {
+    const order = this.orders.find(o => o.order.orderId === orderId);
+    if (order) {
+        this.showOrderStatusModal(order);
+    }
+}
 
 }
 
