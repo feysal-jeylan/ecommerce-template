@@ -1271,6 +1271,11 @@ document.querySelector('.sidebar-toggle').addEventListener('click', () => {
 
 // ===== ENHANCED SECTION MANAGEMENT =====
 switchSection(sectionId) {
+
+    // Clean up previous section
+    if (this.currentSection === 'analytics') {
+        this.cleanupAnalytics();
+    }
     console.log('Switching to section:', sectionId);
     
     // Validate section exists
@@ -1581,15 +1586,669 @@ exportCustomersToCSV() {
 }
 
 updateAnalyticsSection() {
-    // Update metrics
-    this.updateElement('conversion-rate', `${this.analytics.conversionRate.toFixed(1)}%`);
-    this.updateElement('avg-order-value', `$${this.analytics.averageOrderValue.toFixed(2)}`);
-    this.updateElement('customer-lifetime', `$${(this.analytics.averageOrderValue * 2.5).toFixed(2)}`);
-    
-    // Update analytics chart
-    this.updateFunnelChart();
+    this.currentDateRange = '30d'; // Default date range
+    this.initializeAnalyticsDashboard();
+    this.setupAnalyticsEventListeners();
 }
 
+initializeAnalyticsDashboard() {
+    this.updateKPIMetrics();
+    this.renderRevenueAnalyticsChart();
+    this.renderCategoryChart();
+    this.renderTrafficChart();
+    this.updateFunnelData();
+    this.updateTopProducts();
+    this.updateAdvancedMetrics();
+    this.startRealTimeActivity();
+    this.updateRealTimeActivities();
+}
+
+setupAnalyticsEventListeners() {
+    // Date range buttons
+    document.querySelectorAll('.date-range-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const range = e.target.closest('.date-range-btn').dataset.range;
+            if (range !== 'custom') {
+                this.changeDateRange(range);
+            }
+        });
+    });
+
+    // Custom range button
+    document.getElementById('custom-range-btn').addEventListener('click', () => {
+        this.openCustomRangeModal();
+    });
+
+    // Export analytics
+    document.getElementById('export-analytics').addEventListener('click', () => {
+        this.exportAnalyticsReport();
+    });
+
+    // Custom range modal
+    this.setupCustomRangeModal();
+}
+
+
+changeDateRange(range) {
+    this.currentDateRange = range;
+    
+    // Update active button
+    document.querySelectorAll('.date-range-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    document.querySelector(`[data-range="${range}"]`).classList.add('active');
+    
+    // Refresh all analytics data
+    this.refreshAnalyticsData();
+}
+
+refreshAnalyticsData() {
+    this.updateKPIMetrics();
+    this.renderRevenueAnalyticsChart();
+    this.renderCategoryChart();
+    this.renderTrafficChart();
+    this.updateFunnelData();
+    this.updateTopProducts();
+    this.updateAdvancedMetrics();
+}
+
+updateKPIMetrics() {
+    const data = this.getDateRangeData(this.currentDateRange);
+    const previousData = this.getDateRangeData(this.getPreviousDateRange());
+    
+    // Calculate metrics
+    const revenue = data.revenue;
+    const orders = data.orders.length;
+    const customers = new Set(data.orders.map(order => order.shipping.email)).size;
+    const aov = orders > 0 ? revenue / orders : 0;
+    
+    // Previous period metrics
+    const prevRevenue = previousData.revenue;
+    const prevOrders = previousData.orders.length;
+    const prevCustomers = new Set(previousData.orders.map(order => order.shipping.email)).size;
+    const prevAov = prevOrders > 0 ? prevRevenue / prevOrders : 0;
+    
+    // Calculate trends
+    const revenueTrend = prevRevenue > 0 ? ((revenue - prevRevenue) / prevRevenue) * 100 : 0;
+    const ordersTrend = prevOrders > 0 ? ((orders - prevOrders) / prevOrders) * 100 : 0;
+    const customersTrend = prevCustomers > 0 ? ((customers - prevCustomers) / prevCustomers) * 100 : 0;
+    const aovTrend = prevAov > 0 ? ((aov - prevAov) / prevAov) * 100 : 0;
+    
+    // Update DOM
+    this.updateElement('kpi-revenue', `$${revenue.toFixed(2)}`);
+    this.updateElement('kpi-orders', orders.toString());
+    this.updateElement('kpi-customers', customers.toString());
+    this.updateElement('kpi-aov', `$${aov.toFixed(2)}`);
+    
+    // Update trends
+    this.updateKPITrend('kpi-revenue', revenueTrend);
+    this.updateKPITrend('kpi-orders', ordersTrend);
+    this.updateKPITrend('kpi-customers', customersTrend);
+    this.updateKPITrend('kpi-aov', aovTrend);
+}
+
+updateKPITrend(kpiId, trend) {
+    const kpiCard = document.getElementById(kpiId).closest('.kpi-card');
+    const trendElement = kpiCard.querySelector('.kpi-trend');
+    
+    if (trendElement) {
+        const isPositive = trend >= 0;
+        trendElement.className = `kpi-trend ${isPositive ? 'positive' : 'negative'}`;
+        trendElement.innerHTML = `
+            <i class="fas fa-arrow-${isPositive ? 'up' : 'down'}"></i>
+            ${Math.abs(trend).toFixed(1)}%
+        `;
+    }
+}
+
+getDateRangeData(range) {
+    const now = new Date();
+    let startDate = new Date();
+    
+    switch(range) {
+        case '7d':
+            startDate.setDate(now.getDate() - 7);
+            break;
+        case '30d':
+            startDate.setDate(now.getDate() - 30);
+            break;
+        case '90d':
+            startDate.setDate(now.getDate() - 90);
+            break;
+        case '1y':
+            startDate.setFullYear(now.getFullYear() - 1);
+            break;
+        default:
+            startDate.setDate(now.getDate() - 30);
+    }
+    
+    const filteredOrders = this.orders.filter(order => 
+        new Date(order.order.timestamp) >= startDate
+    );
+    
+    const revenue = filteredOrders.reduce((total, order) => total + order.order.total, 0);
+    
+    return {
+        orders: filteredOrders,
+        revenue: revenue,
+        startDate: startDate,
+        endDate: now
+    };
+}
+
+getPreviousDateRange() {
+    const ranges = ['7d', '30d', '90d', '1y'];
+    const currentIndex = ranges.indexOf(this.currentDateRange);
+    return currentIndex > 0 ? ranges[currentIndex - 1] : ranges[0];
+}
+
+renderRevenueAnalyticsChart() {
+    const ctx = document.getElementById('revenue-analytics-chart');
+    if (!ctx) return;
+
+    // Destroy existing chart
+    if (this.revenueAnalyticsChart) {
+        this.revenueAnalyticsChart.destroy();
+    }
+
+    const data = this.generateRevenueAnalyticsData();
+
+    this.revenueAnalyticsChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: data.labels,
+            datasets: [
+                {
+                    label: 'Revenue',
+                    data: data.revenue,
+                    borderColor: '#2563eb',
+                    backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4,
+                    yAxisID: 'y'
+                },
+                {
+                    label: 'Orders',
+                    data: data.orders,
+                    borderColor: '#7c3aed',
+                    backgroundColor: 'rgba(124, 58, 237, 0.1)',
+                    borderWidth: 2,
+                    fill: false,
+                    tension: 0.4,
+                    yAxisID: 'y1'
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            scales: {
+                x: {
+                    grid: {
+                        display: false
+                    }
+                },
+                y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                    title: {
+                        display: true,
+                        text: 'Revenue ($)'
+                    },
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.1)'
+                    }
+                },
+                y1: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    title: {
+                        display: true,
+                        text: 'Orders'
+                    },
+                    grid: {
+                        drawOnChartArea: false,
+                    },
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            if (context.parsed.y !== null) {
+                                if (context.dataset.label === 'Revenue') {
+                                    label += new Intl.NumberFormat('en-US', {
+                                        style: 'currency',
+                                        currency: 'USD'
+                                    }).format(context.parsed.y);
+                                } else {
+                                    label += context.parsed.y;
+                                }
+                            }
+                            return label;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+generateRevenueAnalyticsData() {
+    const data = this.getDateRangeData(this.currentDateRange);
+    const days = this.getDaysInRange(data.startDate, data.endDate);
+    
+    const labels = [];
+    const revenue = [];
+    const orders = [];
+    
+    for (let i = 0; i < days; i++) {
+        const date = new Date(data.startDate);
+        date.setDate(date.getDate() + i);
+        
+        labels.push(date.toLocaleDateString('en-US', { 
+            month: 'short', 
+            day: 'numeric' 
+        }));
+        
+        const dayRevenue = data.orders
+            .filter(order => {
+                const orderDate = new Date(order.order.timestamp);
+                return orderDate.toDateString() === date.toDateString();
+            })
+            .reduce((total, order) => total + order.order.total, 0);
+        
+        const dayOrders = data.orders.filter(order => {
+            const orderDate = new Date(order.order.timestamp);
+            return orderDate.toDateString() === date.toDateString();
+        }).length;
+        
+        revenue.push(dayRevenue);
+        orders.push(dayOrders);
+    }
+    
+    return { labels, revenue, orders };
+}
+
+getDaysInRange(startDate, endDate) {
+    const oneDay = 24 * 60 * 60 * 1000;
+    return Math.round(Math.abs((endDate - startDate) / oneDay)) + 1;
+}
+
+renderCategoryChart() {
+    const ctx = document.getElementById('category-chart');
+    if (!ctx) return;
+
+    if (this.categoryChart) {
+        this.categoryChart.destroy();
+    }
+
+    const categoryData = this.generateCategoryData();
+
+    this.categoryChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: categoryData.labels,
+            datasets: [{
+                data: categoryData.values,
+                backgroundColor: [
+                    '#2563eb', '#7c3aed', '#10b981', '#f59e0b', '#ef4444',
+                    '#8b5cf6', '#06b6d4', '#84cc16', '#f97316', '#64748b'
+                ],
+                borderWidth: 2,
+                borderColor: '#ffffff'
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 20
+                    }
+                }
+            },
+            cutout: '60%'
+        }
+    });
+}
+
+renderTrafficChart() {
+    const ctx = document.getElementById('traffic-chart');
+    if (!ctx) return;
+
+    if (this.trafficChart) {
+        this.trafficChart.destroy();
+    }
+
+    const trafficData = this.generateTrafficData();
+
+    this.trafficChart = new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: trafficData.labels,
+            datasets: [{
+                data: trafficData.values,
+                backgroundColor: [
+                    '#2563eb', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4'
+                ],
+                borderWidth: 2,
+                borderColor: '#ffffff'
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 15
+                    }
+                }
+            }
+        }
+    });
+}
+
+generateTrafficData() {
+    // Simulated traffic sources data
+    return {
+        labels: ['Direct', 'Organic Search', 'Social Media', 'Email', 'Referral'],
+        values: [35, 25, 20, 15, 5]
+    };
+}
+
+updateFunnelData() {
+    const data = this.getDateRangeData(this.currentDateRange);
+    
+    // Simulate funnel data based on orders
+    const visitors = data.orders.length * 12; // Estimate visitors
+    const addToCart = Math.round(visitors * 0.25);
+    const checkout = Math.round(addToCart * 0.48);
+    const purchases = data.orders.length;
+    
+    // Update funnel bars
+    const updateFunnelBar = (stage, value) => {
+        const bar = document.querySelector(`.funnel-bar[data-value]`);
+        if (bar) {
+            bar.textContent = value.toLocaleString();
+            bar.style.width = `${Math.min((value / visitors) * 100, 100)}%`;
+        }
+    };
+    
+    // Calculate metrics
+    const overallConversion = ((purchases / visitors) * 100).toFixed(1);
+    const cartAbandonment = ((1 - (purchases / addToCart)) * 100).toFixed(1);
+    
+    // Update stats
+    this.updateElement('funnel-overall-conversion', `${overallConversion}%`);
+    this.updateElement('funnel-cart-abandonment', `${cartAbandonment}%`);
+}
+
+updateTopProducts() {
+    const container = document.getElementById('top-products-list');
+    if (!container) return;
+
+    const topProducts = this.getTopProducts().slice(0, 5);
+    
+    container.innerHTML = topProducts.map((item, index) => {
+        const product = this.products.find(p => p.id === item.product.id) || item.product;
+        return `
+            <div class="top-product-item">
+                <span class="top-product-rank">${index + 1}</span>
+                <img src="${product.image}" alt="${product.name}" 
+                     class="top-product-image"
+                     onerror="this.src='https://via.placeholder.com/40x40?text=P'">
+                <div class="top-product-info">
+                    <div class="top-product-name">${product.name}</div>
+                    <div class="top-product-meta">
+                        <span class="top-product-sales">${item.quantity} sold</span>
+                        <span>$${item.revenue.toFixed(2)}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+updateAdvancedMetrics() {
+    const data = this.getDateRangeData(this.currentDateRange);
+    
+    // Calculate advanced metrics
+    const uniqueCustomers = new Set(data.orders.map(order => order.shipping.email)).size;
+    const returningCustomers = this.calculateReturningCustomers(data);
+    const customerLTV = this.calculateCustomerLTV();
+    const retentionRate = this.calculateRetentionRate();
+    
+    // Update customer metrics
+    this.updateElement('new-customers', uniqueCustomers.toString());
+    this.updateElement('returning-customers', returningCustomers.toString());
+    this.updateElement('customer-ltv', `$${customerLTV.toFixed(2)}`);
+    this.updateElement('retention-rate', `${retentionRate}%`);
+    
+    // Update performance metrics
+    this.updateElement('conversion-rate', this.analytics.conversionRate.toFixed(1) + '%');
+    this.updateElement('bounce-rate', '42.5%'); // Simulated
+    this.updateElement('session-duration', '3m 24s'); // Simulated
+    this.updateElement('pages-per-session', '4.2'); // Simulated
+}
+
+calculateReturningCustomers(data) {
+    // Simple calculation - customers with more than 1 order in the period
+    const customerOrders = {};
+    data.orders.forEach(order => {
+        const email = order.shipping.email;
+        customerOrders[email] = (customerOrders[email] || 0) + 1;
+    });
+    
+    return Object.values(customerOrders).filter(count => count > 1).length;
+}
+
+calculateCustomerLTV() {
+    if (this.customers.length === 0) return 0;
+    return this.customers.reduce((sum, customer) => sum + customer.totalSpent, 0) / this.customers.length;
+}
+
+calculateRetentionRate() {
+    // Simplified retention rate calculation
+    const totalCustomers = this.customers.length;
+    const returningCustomers = this.customers.filter(c => c.orders > 1).length;
+    return totalCustomers > 0 ? ((returningCustomers / totalCustomers) * 100).toFixed(1) : 0;
+}
+
+startRealTimeActivity() {
+    // Simulate real-time activity updates
+    this.activityInterval = setInterval(() => {
+        this.updateRealTimeActivities();
+    }, 5000); // Update every 5 seconds
+}
+
+updateRealTimeActivities() {
+    const container = document.getElementById('activity-stream');
+    if (!container) return;
+
+    // Get recent orders for activities
+    const recentOrders = this.orders
+        .sort((a, b) => new Date(b.order.timestamp) - new Date(a.order.timestamp))
+        .slice(0, 8);
+
+    const activities = recentOrders.map(order => {
+        const types = ['order', 'user', 'payment'];
+        const type = types[Math.floor(Math.random() * types.length)];
+        
+        let text = '';
+        switch(type) {
+            case 'order':
+                text = `New order #${order.order.orderId} from ${order.shipping.firstName}`;
+                break;
+            case 'user':
+                text = `New customer registered: ${order.shipping.email}`;
+                break;
+            case 'payment':
+                text = `Payment processed for order #${order.order.orderId}`;
+                break;
+        }
+        
+        return {
+            type: type,
+            text: text,
+            time: this.formatTimeAgo(order.order.timestamp)
+        };
+    });
+
+    container.innerHTML = activities.map(activity => `
+        <div class="activity-item">
+            <div class="activity-icon ${activity.type}">
+                <i class="fas fa-${this.getActivityIcon(activity.type)}"></i>
+            </div>
+            <div class="activity-content">
+                <div class="activity-text">${activity.text}</div>
+                <div class="activity-time">${activity.time}</div>
+            </div>
+        </div>
+    `).join('');
+}
+
+getActivityIcon(type) {
+    const icons = {
+        'order': 'shopping-cart',
+        'user': 'user-plus',
+        'payment': 'credit-card'
+    };
+    return icons[type] || 'circle';
+}
+
+// Custom Range Modal
+setupCustomRangeModal() {
+    const modal = document.getElementById('custom-range-modal');
+    const closeBtn = document.getElementById('close-custom-range');
+    const cancelBtn = document.getElementById('cancel-custom-range');
+    const applyBtn = document.getElementById('apply-custom-range');
+
+    const closeModal = () => {
+        modal.classList.remove('active');
+    };
+
+    closeBtn?.addEventListener('click', closeModal);
+    cancelBtn?.addEventListener('click', closeModal);
+    
+    applyBtn?.addEventListener('click', () => {
+        this.applyCustomRange();
+    });
+
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            closeModal();
+        }
+    });
+}
+
+openCustomRangeModal() {
+    const modal = document.getElementById('custom-range-modal');
+    const today = new Date().toISOString().split('T')[0];
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const defaultStart = thirtyDaysAgo.toISOString().split('T')[0];
+    
+    document.getElementById('start-date').value = defaultStart;
+    document.getElementById('end-date').value = today;
+    
+    modal.classList.add('active');
+}
+
+applyCustomRange() {
+    const startDate = document.getElementById('start-date').value;
+    const endDate = document.getElementById('end-date').value;
+    
+    if (!startDate || !endDate) {
+        this.showToast('Please select both start and end dates', 'error');
+        return;
+    }
+    
+    if (new Date(startDate) > new Date(endDate)) {
+        this.showToast('Start date cannot be after end date', 'error');
+        return;
+    }
+    
+    this.currentDateRange = 'custom';
+    this.customStartDate = new Date(startDate);
+    this.customEndDate = new Date(endDate);
+    
+    document.getElementById('custom-range-modal').classList.remove('active');
+    this.refreshAnalyticsData();
+    this.showToast('Custom date range applied');
+}
+
+exportAnalyticsReport() {
+    const data = this.getDateRangeData(this.currentDateRange);
+    const report = this.generateAnalyticsReport(data);
+    
+    const blob = new Blob([report], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `analytics-report-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    
+    this.showToast('Analytics report exported successfully!');
+}
+
+generateAnalyticsReport(data) {
+    const headers = [
+        'Metric',
+        'Value',
+        'Previous Period',
+        'Growth',
+        'Date Range'
+    ];
+    
+    const revenue = data.revenue;
+    const orders = data.orders.length;
+    const customers = new Set(data.orders.map(order => order.shipping.email)).size;
+    const aov = orders > 0 ? revenue / orders : 0;
+    
+    const previousData = this.getDateRangeData(this.getPreviousDateRange());
+    const prevRevenue = previousData.revenue;
+    const prevOrders = previousData.orders.length;
+    const prevAov = prevOrders > 0 ? prevRevenue / prevOrders : 0;
+    
+    const rows = [
+        ['Revenue', `$${revenue.toFixed(2)}`, `$${prevRevenue.toFixed(2)}`, `${(((revenue - prevRevenue) / prevRevenue) * 100).toFixed(1)}%`, this.currentDateRange],
+        ['Orders', orders, prevOrders, `${(((orders - prevOrders) / prevOrders) * 100).toFixed(1)}%`, this.currentDateRange],
+        ['AOV', `$${aov.toFixed(2)}`, `$${prevAov.toFixed(2)}`, `${(((aov - prevAov) / prevAov) * 100).toFixed(1)}%`, this.currentDateRange],
+        ['Customers', customers, 'N/A', 'N/A', this.currentDateRange]
+    ];
+    
+    const csvContent = [headers, ...rows]
+        .map(row => row.map(field => `"${field}"`).join(','))
+        .join('\n');
+    
+    return csvContent;
+}
+
+// Clean up when leaving analytics section
+cleanupAnalytics() {
+    if (this.activityInterval) {
+        clearInterval(this.activityInterval);
+        this.activityInterval = null;
+    }
+}
 updateSettingsSection() {
     // Load current settings
     const settings = JSON.parse(localStorage.getItem('swiftbuy_admin_settings') || '{}');

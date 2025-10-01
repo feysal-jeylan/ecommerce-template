@@ -753,38 +753,272 @@
 <!-- Analytics Section -->
 <section id="analytics" class="content-section">
     <div class="section-header">
-        <h2>Advanced Analytics</h2>
+        <h2>Advanced Analytics Dashboard</h2>
         <div class="section-actions">
-            <select id="analytics-period">
-                <option value="7d">Last 7 Days</option>
-                <option value="30d">Last 30 Days</option>
-                <option value="90d">Last 90 Days</option>
-            </select>
+            <div class="date-range-picker">
+                <button class="date-range-btn active" data-range="7d">7D</button>
+                <button class="date-range-btn" data-range="30d">30D</button>
+                <button class="date-range-btn" data-range="90d">90D</button>
+                <button class="date-range-btn" data-range="1y">1Y</button>
+                <button class="date-range-btn" id="custom-range-btn">
+                    <i class="fas fa-calendar"></i>
+                    Custom
+                </button>
+            </div>
+            <button class="btn-secondary" id="export-analytics">
+                <i class="fas fa-download"></i>
+                Export Report
+            </button>
         </div>
     </div>
-    
-    <div class="analytics-grid">
-        <div class="analytics-card">
-            <h3>Performance Metrics</h3>
-            <div class="metrics-grid">
-                <div class="metric-card">
-                    <span class="metric-value" id="conversion-rate">0%</span>
-                    <span class="metric-label">Conversion Rate</span>
+
+    <!-- KPI Metrics -->
+    <div class="kpi-grid">
+        <div class="kpi-card">
+            <div class="kpi-header">
+                <h3>Total Revenue</h3>
+                <div class="kpi-trend positive">
+                    <i class="fas fa-arrow-up"></i>
+                    12.5%
                 </div>
-                <div class="metric-card">
-                    <span class="metric-value" id="avg-order-value">$0.00</span>
-                    <span class="metric-label">Avg Order Value</span>
+            </div>
+            <div class="kpi-value" id="kpi-revenue">$0</div>
+            <div class="kpi-comparison">vs previous period</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-header">
+                <h3>Orders</h3>
+                <div class="kpi-trend positive">
+                    <i class="fas fa-arrow-up"></i>
+                    8.2%
                 </div>
-                <div class="metric-card">
-                    <span class="metric-value" id="customer-lifetime">$0.00</span>
-                    <span class="metric-label">Customer Lifetime Value</span>
+            </div>
+            <div class="kpi-value" id="kpi-orders">0</div>
+            <div class="kpi-comparison">vs previous period</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-header">
+                <h3>Customers</h3>
+                <div class="kpi-trend positive">
+                    <i class="fas fa-arrow-up"></i>
+                    15.7%
+                </div>
+            </div>
+            <div class="kpi-value" id="kpi-customers">0</div>
+            <div class="kpi-comparison">vs previous period</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-header">
+                <h3>AOV</h3>
+                <div class="kpi-trend negative">
+                    <i class="fas fa-arrow-down"></i>
+                    3.1%
+                </div>
+            </div>
+            <div class="kpi-value" id="kpi-aov">$0</div>
+            <div class="kpi-comparison">Average Order Value</div>
+        </div>
+    </div>
+
+    <!-- Charts Row 1 -->
+    <div class="charts-row-2">
+        <div class="chart-card large-chart">
+            <div class="chart-header">
+                <h3>Revenue Analytics</h3>
+                <div class="chart-legend">
+                    <div class="legend-item">
+                        <span class="legend-color revenue"></span>
+                        Revenue
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color orders"></span>
+                        Orders
+                    </div>
+                </div>
+            </div>
+            <canvas id="revenue-analytics-chart" width="600" height="300"></canvas>
+        </div>
+
+        <div class="chart-card">
+            <div class="chart-header">
+                <h3>Conversion Funnel</h3>
+            </div>
+            <div class="funnel-container">
+                <div class="funnel-stage">
+                    <div class="funnel-label">Visitors</div>
+                    <div class="funnel-bar" data-value="1000">1,000</div>
+                </div>
+                <div class="funnel-stage">
+                    <div class="funnel-label">Add to Cart</div>
+                    <div class="funnel-bar" data-value="250">250</div>
+                </div>
+                <div class="funnel-stage">
+                    <div class="funnel-label">Checkout</div>
+                    <div class="funnel-bar" data-value="120">120</div>
+                </div>
+                <div class="funnel-stage">
+                    <div class="funnel-label">Purchases</div>
+                    <div class="funnel-bar" data-value="85">85</div>
+                </div>
+            </div>
+            <div class="funnel-stats">
+                <div class="funnel-stat">
+                    <span>Overall Conversion</span>
+                    <strong>8.5%</strong>
+                </div>
+                <div class="funnel-stat">
+                    <span>Cart Abandonment</span>
+                    <strong>52%</strong>
                 </div>
             </div>
         </div>
-        
-        <div class="analytics-card">
-            <h3>Sales Funnel</h3>
-            <canvas id="funnel-chart" width="400" height="200"></canvas>
+    </div>
+
+    <!-- Charts Row 2 -->
+    <div class="charts-row-3">
+        <div class="chart-card">
+            <div class="chart-header">
+                <h3>Sales by Category</h3>
+            </div>
+            <canvas id="category-chart" width="400" height="250"></canvas>
+        </div>
+
+        <div class="chart-card">
+            <div class="chart-header">
+                <h3>Top Products</h3>
+                <a href="#products" class="view-all">View All</a>
+            </div>
+            <div class="top-products-list" id="top-products-list">
+                <!-- Top products populated by JS -->
+            </div>
+        </div>
+
+        <div class="chart-card">
+            <div class="chart-header">
+                <h3>Traffic Sources</h3>
+            </div>
+            <canvas id="traffic-chart" width="400" height="250"></canvas>
+        </div>
+    </div>
+
+    <!-- Advanced Metrics -->
+    <div class="advanced-metrics">
+        <div class="metrics-card">
+            <h3>Customer Analytics</h3>
+            <div class="metrics-grid">
+                <div class="metric-item">
+                    <span class="metric-label">New Customers</span>
+                    <span class="metric-value" id="new-customers">0</span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label">Returning Customers</span>
+                    <span class="metric-value" id="returning-customers">0</span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label">Customer Lifetime Value</span>
+                    <span class="metric-value" id="customer-ltv">$0</span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label">Retention Rate</span>
+                    <span class="metric-value" id="retention-rate">0%</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="metrics-card">
+            <h3>Performance Metrics</h3>
+            <div class="metrics-grid">
+                <div class="metric-item">
+                    <span class="metric-label">Conversion Rate</span>
+                    <span class="metric-value" id="conversion-rate">0%</span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label">Bounce Rate</span>
+                    <span class="metric-value" id="bounce-rate">0%</span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label">Avg Session Duration</span>
+                    <span class="metric-value" id="session-duration">0m</span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label">Pages per Session</span>
+                    <span class="metric-value" id="pages-per-session">0</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Real-time Activity -->
+    <div class="activity-dashboard">
+        <div class="dashboard-card">
+            <div class="card-header">
+                <h3>Real-time Activity</h3>
+                <div class="live-indicator">
+                    <span class="pulse"></span>
+                    Live
+                </div>
+            </div>
+            <div class="activity-stream" id="activity-stream">
+                <!-- Real-time activities populated by JS -->
+            </div>
+        </div>
+
+        <div class="dashboard-card">
+            <div class="card-header">
+                <h3>Geographic Performance</h3>
+            </div>
+            <div class="geo-map" id="geo-map">
+                <div class="map-placeholder">
+                    <i class="fas fa-globe-americas"></i>
+                    <p>Geographic data visualization</p>
+                    <span>Top regions: North America, Europe, Asia</span>
+                </div>
+            </div>
+            <div class="geo-stats">
+                <div class="geo-stat">
+                    <span>North America</span>
+                    <strong>45%</strong>
+                </div>
+                <div class="geo-stat">
+                    <span>Europe</span>
+                    <strong>30%</strong>
+                </div>
+                <div class="geo-stat">
+                    <span>Asia</span>
+                    <strong>20%</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Range Modal -->
+    <div class="modal" id="custom-range-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Select Date Range</h3>
+                <button class="modal-close" id="close-custom-range">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="date-inputs">
+                    <div class="form-group">
+                        <label>From Date</label>
+                        <input type="date" id="start-date" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label>To Date</label>
+                        <input type="date" id="end-date" class="form-input">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel" id="cancel-custom-range">Cancel</button>
+                <button class="btn-primary" id="apply-custom-range">Apply Range</button>
+            </div>
         </div>
     </div>
 </section>
