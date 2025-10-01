@@ -6,6 +6,7 @@
     <title>Order Confirmation - SwiftBuy</title>
     <link rel="stylesheet" href="../e-commerce.css">
     <link rel="stylesheet" href="checkout.css">
+    <link rel="stylesheet" href="confirmation.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
@@ -24,7 +25,7 @@
                 </div>
                 
                 <h1>Order Confirmed! 🎉</h1>
-                <p class="confirmation-message">Thank you for your purchase. Your order has been successfully placed.</p>
+                <p class="confirmation-message">Thank you for your purchase. Your order has been successfully placed and is being processed.</p>
                 
                 <div class="order-summary">
                     <h3>Order Details</h3>
@@ -32,6 +33,41 @@
                         <p><strong>Order ID:</strong> <span id="confirmation-order-id">Loading...</span></p>
                         <p><strong>Order Total:</strong> <span id="confirmation-total">Loading...</span></p>
                         <p><strong>Estimated Delivery:</strong> <span id="confirmation-delivery">2-3 business days</span></p>
+                        <p><strong>Shipping Address:</strong> <span id="confirmation-address">Loading...</span></p>
+                    </div>
+                </div>
+
+                <div class="order-timeline">
+                    <h4>Order Timeline</h4>
+                    <div class="timeline">
+                        <div class="timeline-item active">
+                            <div class="timeline-marker"></div>
+                            <div class="timeline-content">
+                                <strong>Order Placed</strong>
+                                <span>Just now</span>
+                            </div>
+                        </div>
+                        <div class="timeline-item">
+                            <div class="timeline-marker"></div>
+                            <div class="timeline-content">
+                                <strong>Order Confirmed</strong>
+                                <span>Within 1 hour</span>
+                            </div>
+                        </div>
+                        <div class="timeline-item">
+                            <div class="timeline-marker"></div>
+                            <div class="timeline-content">
+                                <strong>Shipped</strong>
+                                <span>Next business day</span>
+                            </div>
+                        </div>
+                        <div class="timeline-item">
+                            <div class="timeline-marker"></div>
+                            <div class="timeline-content">
+                                <strong>Delivered</strong>
+                                <span>2-3 business days</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -44,39 +80,35 @@
                         <i class="fas fa-shopping-bag"></i>
                         Continue Shopping
                     </a>
+                    <button class="btn-outline" id="print-receipt">
+                        <i class="fas fa-print"></i>
+                        Print Receipt
+                    </button>
+                </div>
+
+                <div class="confirmation-features">
+                    <div class="feature-item">
+                        <i class="fas fa-shield-alt"></i>
+                        <span>Secure Payment</span>
+                    </div>
+                    <div class="feature-item">
+                        <i class="fas fa-shipping-fast"></i>
+                        <span>Free Shipping</span>
+                    </div>
+                    <div class="feature-item">
+                        <i class="fas fa-undo"></i>
+                        <span>Easy Returns</span>
+                    </div>
                 </div>
 
                 <div class="confirmation-note">
-                    <p>📧 A confirmation email has been sent to your email address.</p>
+                    <p><i class="fas fa-envelope"></i> A confirmation email has been sent to your email address.</p>
+                    <p><i class="fas fa-headset"></i> Need help? <a href="../contact.html">Contact our support team</a></p>
                 </div>
             </div>
         </main>
     </div>
 
-    <script>
-        // Get order ID from URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const orderId = urlParams.get('orderId');
-        
-        if (orderId) {
-            document.getElementById('confirmation-order-id').textContent = orderId;
-            
-            // Set up track order button
-            document.getElementById('track-order-btn').href = 
-                `../order-tracking.html?orderId=${orderId}`;
-            
-            // Try to get order total from localStorage
-            try {
-                const orders = JSON.parse(localStorage.getItem('swiftbuy_orders') || '[]');
-                const order = orders.find(o => o.order.orderId === orderId);
-                if (order) {
-                    document.getElementById('confirmation-total').textContent = 
-                        `$${order.order.total.toFixed(2)}`;
-                }
-            } catch (error) {
-                console.log('Could not load order details');
-            }
-        }
-    </script>
+    <script src="confirmation.js"></script>
 </body>
 </html>
