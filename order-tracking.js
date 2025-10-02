@@ -282,7 +282,12 @@ async enhanceOrderWithTracking(order) {
     }
 
     // ===== UI UPDATES & DISPLAY =====
-    async displayOrderDetails() {
+  async displayOrderDetails() {
+    try {
+        if (!this.currentOrder) {
+            throw new Error('No order data available');
+        }
+        
         this.showSection('order-details');
         this.hideSection('order-lookup');
         this.hideSection('order-not-found');
@@ -305,7 +310,11 @@ async enhanceOrderWithTracking(order) {
 
         // Start map simulation
         this.simulatePackageMovement();
+    } catch (error) {
+        console.error('❌ Error displaying order details:', error);
+        this.showError('Failed to load order details');
     }
+}
 
 updateOrderStatus() {
     // Use the REAL tracking status from the order data
@@ -416,9 +425,15 @@ updateOrderStatus() {
         `).join('');
     }
 
-    updateShippingInfo() {
+updateShippingInfo() {
+    try {
         const shipping = this.currentOrder.shipping;
         const container = document.getElementById('shipping-details');
+        
+        if (!container) {
+            console.error('❌ Shipping details container not found');
+            return;
+        }
         
         container.innerHTML = `
             <div class="shipping-address">
@@ -435,10 +450,19 @@ updateOrderStatus() {
             </div>
         `;
 
-        // Update delivery estimate
-        this.updateElement('estimate-date', this.currentOrder.tracking.estimatedDelivery.date);
-        this.updateElement('estimate-range', this.currentOrder.tracking.estimatedDelivery.timeWindow);
+        // Update delivery estimate with safe property access
+        const estimatedDelivery = this.currentOrder.tracking?.estimatedDelivery;
+        if (estimatedDelivery) {
+            this.updateElement('estimate-date', estimatedDelivery.date || 'Calculating...');
+            this.updateElement('estimate-range', estimatedDelivery.timeWindow || 'To be determined');
+        } else {
+            this.updateElement('estimate-date', 'Calculating...');
+            this.updateElement('estimate-range', 'To be determined');
+        }
+    } catch (error) {
+        console.error('❌ Error updating shipping info:', error);
     }
+}
 
     updateRealTimeFeed() {
         const container = document.getElementById('updates-feed');
@@ -550,11 +574,18 @@ updateOrderStatus() {
         console.log(show ? '🔄 Loading...' : '✅ Loaded');
     }
 
-    showError(message) {
+  showError(message) {
+    try {
         this.hideSection('order-details');
         this.showSection('order-not-found');
-        console.error('❌', message);
+        
+        // Handle both Error objects and string messages
+        const errorMessage = typeof message === 'string' ? message : message?.message || 'An error occurred';
+        console.error('❌', errorMessage);
+    } catch (error) {
+        console.error('❌ Error in showError method:', error);
     }
+}
 
     updateElement(id, content) {
         const element = document.getElementById(id);
