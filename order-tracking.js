@@ -15,6 +15,7 @@ class OrderTrackingSystem {
     }
 
     // ===== ORDER LOOKUP & VALIDATION =====
+// ===== ORDER LOOKUP & VALIDATION =====
 async lookupOrder(orderId, email) {
     try {
         this.showLoading(true);
@@ -25,40 +26,36 @@ async lookupOrder(orderId, email) {
             throw new Error('Please check your order ID and email');
         }
 
-        // FIND ORDER - Use real data from localStorage
+        // FIND ORDER - Handle both order structures
         const orders = JSON.parse(localStorage.getItem('swiftbuy_orders') || '[]');
-        const order = orders.find(o => 
-            o.order?.orderId === orderId && 
-            o.shipping?.email?.toLowerCase() === email.toLowerCase()
-        );
+        console.log('📦 All orders in storage:', orders);
+        
+        const order = orders.find(o => {
+            // Handle both order structures
+            const orderData = o.order || o;
+            const shippingData = o.shipping || o;
+            
+            return orderData.orderId === orderId && 
+                   shippingData.email?.toLowerCase() === email.toLowerCase();
+        });
 
         if (!order) {
+            console.log('❌ Order not found - searched for:', { orderId, email });
             throw new Error('Order not found');
         }
 
-        console.log('📦 Found real order:', order);
-        console.log('📊 Real tracking data:', order.tracking);
-
-        // USE REAL TRACKING DATA INSTEAD OF GENERATING FAKE DATA
-        this.currentOrder = {
-            ...order,
-            // Use real tracking data if it exists, otherwise create basic one
-            tracking: order.tracking || {
-                status: 'processing',
-                carrier: 'SwiftShip Express',
-                estimatedDelivery: this.calculateDeliveryEstimate(new Date(order.order.timestamp))
-            },
-            // Use real updates or create basic ones
-            updates: this.generateUpdatesFromTracking(order.tracking, order.order.timestamp)
-        };
-
-        console.log('✅ Final order data for display:', this.currentOrder);
+        console.log('🎯 Found order:', order);
+        
+        // ENHANCE ORDER WITH TRACKING DATA
+        this.currentOrder = await this.enhanceOrderWithTracking(order);
+        console.log('✅ Enhanced order for display:', this.currentOrder);
         
         // DISPLAY ORDER
         await this.displayOrderDetails();
         this.startRealTimeTracking();
         
     } catch (error) {
+        console.error('❌ Lookup error:', error);
         this.showError(error.message);
     } finally {
         this.showLoading(false);
@@ -125,16 +122,26 @@ async findOrder(orderId, email) {
     return null;
 }
 
- async enhanceOrderWithTracking(order) {
+async enhanceOrderWithTracking(order) {
     try {
         console.log('🔄 Enhancing order with tracking data...');
         
-        // Add tracking-specific data
-        const trackingData = await this.generateTrackingData(order);
-        console.log('📦 Generated tracking data:', trackingData);
+        // Handle both order structures
+        const orderData = order.order || order;
+        const shippingData = order.shipping || order;
+        
+        // Use existing tracking data or generate new
+        const trackingData = order.tracking || await this.generateTrackingData(order);
+        console.log('📦 Tracking data:', trackingData);
+        
+        // Ensure estimatedDelivery exists with proper structure
+        if (!trackingData.estimatedDelivery) {
+            trackingData.estimatedDelivery = this.calculateDeliveryEstimate(new Date(orderData.timestamp));
+        }
         
         const enhancedOrder = {
-            ...order,
+            order: orderData,
+            shipping: shippingData,
             tracking: trackingData,
             updates: this.generateOrderUpdates(order, trackingData)
         };
@@ -145,12 +152,16 @@ async findOrder(orderId, email) {
     } catch (error) {
         console.error('❌ Error enhancing order:', error);
         // Return basic order without tracking if enhancement fails
+        const orderData = order.order || order;
+        const shippingData = order.shipping || order;
+        
         return {
-            ...order,
+            order: orderData,
+            shipping: shippingData,
             tracking: {
                 status: 'processing',
                 carrier: 'SwiftShip Express',
-                estimatedDelivery: { date: 'Soon', timeWindow: '' }
+                estimatedDelivery: this.calculateDeliveryEstimate(new Date(orderData.timestamp))
             },
             updates: []
         };
