@@ -50,10 +50,29 @@ class AdminDashboard {
         this.generateNotifications();
     }
 
-    loadOrders() {
-        this.orders = JSON.parse(localStorage.getItem('swiftbuy_orders') || '[]');
-        console.log('📦 Loaded orders:', this.orders.length);
-    }
+loadOrders() {
+    this.orders = JSON.parse(localStorage.getItem('swiftbuy_orders') || '[]');
+    
+    // Initialize tracking for orders that don't have it
+    this.orders.forEach(order => {
+        if (!order.tracking) {
+            order.tracking = {
+                status: 'ordered',
+                lastUpdated: new Date().toISOString(),
+                history: [
+                    {
+                        status: 'ordered',
+                        timestamp: order.order.timestamp || new Date().toISOString(),
+                        note: 'Order placed',
+                        updatedBy: 'System'
+                    }
+                ]
+            };
+        }
+    });
+    
+    console.log('📦 Loaded orders:', this.orders.length);
+}
 
     loadProducts() {
         // Load from products.js data
@@ -3105,28 +3124,73 @@ showOrderStatusModal(order) {
 }
 
 updateOrderStatusAction(orderId, newStatus) {
+    console.log('Updating status for order:', orderId);
+    
     const order = this.orders.find(o => o.order.orderId === orderId);
-    if (order) {
-        // Initialize tracking if it doesn't exist
-        if (!order.tracking) {
-            order.tracking = {};
-        }
-        
-        // Update status
-        order.tracking.status = newStatus;
-        order.tracking.lastUpdated = new Date().toISOString();
-        
-        // Save to localStorage
+    if (!order) {
+        console.error('Order not found:', orderId);
+        this.showToast('Order not found!', 'error');
+        return;
+    }
+    
+    // Ensure tracking object exists
+    if (!order.tracking) {
+        order.tracking = {
+            status: 'ordered',
+            history: []
+        };
+    }
+    
+    // Get the note from the modal safely
+    let note = '';
+    try {
+        const noteInput = document.querySelector('.status-note-input');
+        note = noteInput ? noteInput.value : '';
+    } catch (error) {
+        console.log('Note input not found');
+    }
+    
+    // Create status update record
+    const statusUpdate = {
+        status: newStatus,
+        timestamp: new Date().toISOString(),
+        note: note,
+        updatedBy: 'Admin'
+    };
+    
+    // Update current status
+    order.tracking.status = newStatus;
+    order.tracking.lastUpdated = new Date().toISOString();
+    
+    // Initialize history array if it doesn't exist
+    if (!Array.isArray(order.tracking.history)) {
+        order.tracking.history = [];
+    }
+    
+    // Add to history
+    order.tracking.history.push(statusUpdate);
+    
+    // Save to localStorage
+    try {
         localStorage.setItem('swiftbuy_orders', JSON.stringify(this.orders));
-        
-        // Update the UI
-        this.updateOrdersTable();
-        
-        this.showToast(`Order status updated to: ${this.formatStatus(newStatus)}`);
-        
-        // Close the modal
+        console.log('Order saved successfully:', order);
+    } catch (error) {
+        console.error('Error saving order:', error);
+        this.showToast('Error saving order!', 'error');
+        return;
+    }
+    
+    // Update the UI
+    this.updateOrdersTable();
+    
+    this.showToast(`Order status updated to: ${this.formatStatus(newStatus)}`);
+    
+    // Close the modal safely
+    try {
         const modal = document.getElementById('order-status-modal');
         if (modal) modal.remove();
+    } catch (error) {
+        console.log('Modal already closed');
     }
 }
 

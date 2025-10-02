@@ -15,7 +15,7 @@ class OrderTrackingSystem {
     }
 
     // ===== ORDER LOOKUP & VALIDATION =====
-   async lookupOrder(orderId, email) {
+async lookupOrder(orderId, email) {
     try {
         this.showLoading(true);
         console.log('🔍 Debug Order Lookup:', { orderId, email });
@@ -25,7 +25,7 @@ class OrderTrackingSystem {
             throw new Error('Please check your order ID and email');
         }
 
-        // FIND ORDER
+        // FIND ORDER - Use real data from localStorage
         const orders = JSON.parse(localStorage.getItem('swiftbuy_orders') || '[]');
         const order = orders.find(o => 
             o.order?.orderId === orderId && 
@@ -36,26 +36,24 @@ class OrderTrackingSystem {
             throw new Error('Order not found');
         }
 
-        // SIMPLE ORDER SETUP - NO COMPLEX ENHANCEMENT
+        console.log('📦 Found real order:', order);
+        console.log('📊 Real tracking data:', order.tracking);
+
+        // USE REAL TRACKING DATA INSTEAD OF GENERATING FAKE DATA
         this.currentOrder = {
             ...order,
-            tracking: {
+            // Use real tracking data if it exists, otherwise create basic one
+            tracking: order.tracking || {
                 status: 'processing',
                 carrier: 'SwiftShip Express',
-                estimatedDelivery: { 
-                    date: 'Monday, Dec 11', 
-                    timeWindow: '9:00 AM - 1:00 PM' 
-                }
+                estimatedDelivery: this.calculateDeliveryEstimate(new Date(order.order.timestamp))
             },
-            updates: [
-                {
-                    type: 'status_update',
-                    message: 'Order confirmed and being processed',
-                    timestamp: new Date().toISOString()
-                }
-            ]
+            // Use real updates or create basic ones
+            updates: this.generateUpdatesFromTracking(order.tracking, order.order.timestamp)
         };
 
+        console.log('✅ Final order data for display:', this.currentOrder);
+        
         // DISPLAY ORDER
         await this.displayOrderDetails();
         this.startRealTimeTracking();
@@ -67,6 +65,40 @@ class OrderTrackingSystem {
     }
 }
 
+
+generateUpdatesFromTracking(tracking, orderTimestamp) {
+    const updates = [];
+    
+    // Add initial order placed update
+    updates.push({
+        type: 'status_update',
+        message: 'Order placed successfully',
+        timestamp: orderTimestamp
+    });
+
+    // If we have real tracking data with history, use it
+    if (tracking && tracking.history && Array.isArray(tracking.history)) {
+        tracking.history.forEach(historyItem => {
+            updates.push({
+                type: 'status_update',
+                message: `Status updated to: ${this.formatStatusText(historyItem.status)}`,
+                timestamp: historyItem.timestamp,
+                note: historyItem.note || ''
+            });
+        });
+    } 
+    // If we have tracking status but no history, create updates from status
+    else if (tracking && tracking.status) {
+        const statusUpdate = {
+            type: 'status_update',
+            message: `Current status: ${this.formatStatusText(tracking.status)}`,
+            timestamp: tracking.lastUpdated || new Date().toISOString()
+        };
+        updates.push(statusUpdate);
+    }
+
+    return updates;
+}
  validateLookupInput(orderId, email) {
     // TEMPORARY: Accept any input for testing
     console.log('🔍 Validation Input:', { orderId, email });
@@ -264,28 +296,38 @@ async findOrder(orderId, email) {
         this.simulatePackageMovement();
     }
 
-    updateOrderStatus() {
-        const status = this.currentOrder.tracking.status;
-        const statusBadge = document.getElementById('order-status-badge');
-        const statusText = statusBadge.querySelector('.status-text');
-        const statusIndicator = statusBadge.querySelector('.status-indicator');
+updateOrderStatus() {
+    // Use the REAL tracking status from the order data
+    const status = this.currentOrder.tracking.status;
+    console.log('🔄 Updating UI with real status:', status);
+    
+    const statusBadge = document.getElementById('order-status-badge');
+    const statusText = statusBadge.querySelector('.status-text');
+    const statusIndicator = statusBadge.querySelector('.status-indicator');
 
-        // Update text
-        statusText.textContent = this.formatStatusText(status);
-
-        // Update indicator color
-        const statusColors = {
-            'ordered': '#6b7280',
-            'confirmed': '#3b82f6', 
-            'processing': '#8b5cf6',
-            'shipped': '#f59e0b',
-            'out-for-delivery': '#ef4444',
-            'delivered': '#10b981'
-        };
-
-        statusIndicator.style.background = statusColors[status] || '#6b7280';
+    if (!statusText || !statusIndicator) {
+        console.error('Status elements not found');
+        return;
     }
 
+    // Update text with REAL status
+    statusText.textContent = this.formatStatusText(status);
+
+    // Update indicator color based on REAL status
+    const statusColors = {
+        'ordered': '#6b7280',
+        'confirmed': '#3b82f6', 
+        'processing': '#8b5cf6',
+        'shipped': '#f59e0b',
+        'out-for-delivery': '#ef4444',
+        'delivered': '#10b981'
+    };
+
+    statusIndicator.style.background = statusColors[status] || '#6b7280';
+    
+    // Also update the progress timeline with REAL status
+    this.updateProgressTimeline();
+}
     formatStatusText(status) {
         const statusMap = {
             'ordered': 'Order Placed',
