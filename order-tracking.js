@@ -76,12 +76,20 @@ generateUpdatesFromTracking(tracking, orderTimestamp) {
     // If we have real tracking data with history, use it
     if (tracking && tracking.history && Array.isArray(tracking.history)) {
         tracking.history.forEach(historyItem => {
-            updates.push({
+            const update = {
                 type: 'status_update',
                 message: `Status updated to: ${this.formatStatusText(historyItem.status)}`,
                 timestamp: historyItem.timestamp,
-                note: historyItem.note || ''
-            });
+                updatedBy: historyItem.updatedBy || 'System'
+            };
+            
+            // ADD NOTE TO UPDATE IF EXISTS
+            if (historyItem.note && historyItem.note.trim() !== '') {
+                update.note = historyItem.note;
+                update.message = `Status updated: ${this.formatStatusText(historyItem.status)}`;
+            }
+            
+            updates.push(update);
         });
     } 
     // If we have tracking status but no history, create updates from status
@@ -89,8 +97,15 @@ generateUpdatesFromTracking(tracking, orderTimestamp) {
         const statusUpdate = {
             type: 'status_update',
             message: `Current status: ${this.formatStatusText(tracking.status)}`,
-            timestamp: tracking.lastUpdated || new Date().toISOString()
+            timestamp: tracking.lastUpdated || new Date().toISOString(),
+            updatedBy: tracking.updatedBy || 'System'
         };
+        
+        // ADD NOTE IF EXISTS IN TRACKING DATA
+        if (tracking.note && tracking.note.trim() !== '') {
+            statusUpdate.note = tracking.note;
+        }
+        
         updates.push(statusUpdate);
     }
 
@@ -464,21 +479,25 @@ updateShippingInfo() {
     }
 }
 
-    updateRealTimeFeed() {
-        const container = document.getElementById('updates-feed');
-        container.innerHTML = this.currentOrder.updates.map(update => `
-            <div class="update-item">
-                <div class="update-icon">
-                    <i class="fas fa-${this.getUpdateIcon(update.type)}"></i>
-                </div>
-                <div class="update-content">
-                    <p class="update-message">${update.message}</p>
-                    <span class="update-time">${this.formatTimestamp(new Date(update.timestamp))}</span>
-                    ${update.location ? `<span class="update-location">📍 ${update.location}</span>` : ''}
-                </div>
+updateRealTimeFeed() {
+    const container = document.getElementById('updates-feed');
+    if (!container) return;
+
+    container.innerHTML = this.currentOrder.updates.map(update => `
+        <div class="update-item">
+            <div class="update-icon">
+                <i class="fas fa-${this.getUpdateIcon(update.type)}"></i>
             </div>
-        `).join('');
-    }
+            <div class="update-content">
+                <p class="update-message">${update.message}</p>
+                ${update.note ? `<div class="update-note">📝 ${update.note}</div>` : ''}
+                <span class="update-time">${this.formatTimestamp(new Date(update.timestamp))}</span>
+                ${update.location ? `<span class="update-location">📍 ${update.location}</span>` : ''}
+                ${update.updatedBy ? `<span class="update-by">By: ${update.updatedBy}</span>` : ''}
+            </div>
+        </div>
+    `).join('');
+}
 
     // ===== ADVANCED FEATURES =====
     simulatePackageMovement() {

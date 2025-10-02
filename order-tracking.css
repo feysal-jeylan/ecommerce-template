@@ -813,3 +813,21 @@ input:focus-visible {
     --tracking-shadow: 0 0 0 1px #000000;
   }
 }
+
+.update-note {
+    background: #f8fafc;
+    border-left: 3px solid #3b82f6;
+    padding: 0.5rem 0.75rem;
+    margin: 0.5rem 0;
+    border-radius: 0 4px 4px 0;
+    font-size: 0.9rem;
+    color: #374151;
+}
+
+.update-by {
+    display: block;
+    font-size: 0.8rem;
+    color: #6b7280;
+    margin-top: 0.25rem;
+    font-style: italic;
+}
