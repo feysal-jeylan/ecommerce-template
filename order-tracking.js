@@ -86,27 +86,22 @@ generateUpdatesFromTracking(tracking, orderTimestamp) {
             // ADD NOTE TO UPDATE IF EXISTS
             if (historyItem.note && historyItem.note.trim() !== '') {
                 update.note = historyItem.note;
-                update.message = `Status updated: ${this.formatStatusText(historyItem.status)}`;
+                update.message = `Status: ${this.formatStatusText(historyItem.status)} - ${historyItem.note}`;
             }
             
             updates.push(update);
         });
-    } 
-    // If we have tracking status but no history, create updates from status
-    else if (tracking && tracking.status) {
-        const statusUpdate = {
-            type: 'status_update',
-            message: `Current status: ${this.formatStatusText(tracking.status)}`,
+    }
+    
+    // ✅ CRITICAL: Add current note as a separate update if it exists
+    if (tracking?.note && tracking.note.trim() !== '') {
+        updates.push({
+            type: 'note_update', 
+            message: `Admin Note: ${tracking.note}`,
             timestamp: tracking.lastUpdated || new Date().toISOString(),
-            updatedBy: tracking.updatedBy || 'System'
-        };
-        
-        // ADD NOTE IF EXISTS IN TRACKING DATA
-        if (tracking.note && tracking.note.trim() !== '') {
-            statusUpdate.note = tracking.note;
-        }
-        
-        updates.push(statusUpdate);
+            note: tracking.note,
+            updatedBy: 'Admin'
+        });
     }
 
     return updates;
@@ -260,7 +255,7 @@ async enhanceOrderWithTracking(order) {
         // Simulate occasional tracking updates
         if (Math.random() < 0.3) { // 30% chance of update
             this.generateNewTrackingEvent();
-            this.updateDisplay();
+            this.updateRealTimeFeed(); // or whatever the correct method name is
         }
 
         // Update progress based on time
