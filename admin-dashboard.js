@@ -1265,23 +1265,31 @@ document.querySelector('.sidebar-toggle').addEventListener('click', () => {
         this.setupStatsCardInteractions()
 
            // ORDER ACTION BUTTONS - Add this exact code
-    document.addEventListener('click', (e) => {
-        // Check if click is on view-order button or its child icon
-        if (e.target.closest('.view-order')) {
-            const button = e.target.closest('.view-order');
-            const orderId = button.dataset.id;
-            console.log('View order clicked:', orderId);
-            this.viewOrderDetails(orderId);
-        }
+// ORDER ACTION BUTTONS - Updated version
+document.addEventListener('click', (e) => {
+    // Check if click is on view-order button or its child icon
+    if (e.target.closest('.view-order')) {
+        const button = e.target.closest('.view-order');
+        const orderId = button.dataset.id;
+        console.log('View order clicked:', orderId);
+        this.viewOrderDetails(orderId);
+    }
+    
+    // Check if click is on update-status button or its child icon
+    if (e.target.closest('.update-status')) {
+        const button = e.target.closest('.update-status');
+        const orderId = button.dataset.id;
+        console.log('Update status clicked:', orderId);
         
-        // Check if click is on update-status button or its child icon
-        if (e.target.closest('.update-status')) {
-            const button = e.target.closest('.update-status');
-            const orderId = button.dataset.id;
-            console.log('Update status clicked:', orderId);
-            this.updateOrderStatus(orderId);
+        // Find the order and show modal
+        const order = this.orders.find(o => o.order.orderId === orderId);
+        if (order) {
+            this.showOrderStatusModal(order);
+        } else {
+            this.showToast('Order not found!', 'error');
         }
-    });
+    }
+});
     }
 
     // From here
@@ -3074,7 +3082,7 @@ showOrderStatusModal(order) {
             <div class="modal-content">
                 <div class="modal-header">
                     <h3>Update Order Status - #${order.order.orderId}</h3>
-                    <button class="modal-close" onclick="this.closest('.modal').remove()">
+                    <button class="modal-close" id="close-status-modal">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
@@ -3090,11 +3098,10 @@ showOrderStatusModal(order) {
 
                     <div class="status-options">
                         <h4>Update Status</h4>
-                        <div class="status-buttons">
+                        <div class="status-buttons" id="status-buttons">
                             ${statusOptions.map(status => `
-                                <button class="status-option ${status.value === currentStatus ? 'active' : ''}" 
-                                        data-status="${status.value}"
-                                        onclick="adminDashboard.updateOrderStatusAction('${order.order.orderId}', '${status.value}')">
+                                <button type="button" class="status-option ${status.value === currentStatus ? 'active' : ''}" 
+                                        data-status="${status.value}">
                                     <span class="status-dot" style="background: ${status.color}"></span>
                                     ${status.label}
                                 </button>
@@ -3103,15 +3110,16 @@ showOrderStatusModal(order) {
                     </div>
 
                     <div class="status-notes">
-                        <label>Add Note (Optional)</label>
-                        <textarea class="status-note-input" placeholder="Add a note about this status update..."></textarea>
+                        <label for="status-note-input">Add Note (Optional)</label>
+                        <textarea id="status-note-input" class="status-note-input" 
+                                  placeholder="Add a note about this status update..."></textarea>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button class="btn-cancel" onclick="this.closest('.modal').remove()">
+                    <button class="btn-cancel" id="cancel-status-update">
                         Cancel
                     </button>
-                    <button class="btn-primary" onclick="adminDashboard.sendStatusNotification('${order.order.orderId}')">
+                    <button class="btn-primary" id="notify-customer-btn">
                         <i class="fas fa-bell"></i>
                         Notify Customer
                     </button>
@@ -3120,43 +3128,125 @@ showOrderStatusModal(order) {
         </div>
     `;
 
+    // Remove existing modal if any
+    const existingModal = document.getElementById('order-status-modal');
+    if (existingModal) existingModal.remove();
+
+    // Add to DOM
     document.body.insertAdjacentHTML('beforeend', modalHTML);
+    
+    // Setup event listeners for the new modal
+    this.setupOrderStatusModalEvents(order.order.orderId);
 }
 
-updateOrderStatusAction(orderId, newStatus) {
-    console.log('Updating status for order:', orderId);
+setupOrderStatusModalEvents(orderId) {
+    const modal = document.getElementById('order-status-modal');
+    if (!modal) {
+        console.error('❌ Modal not found for event setup');
+        return;
+    }
+
+    // Set initial selected status
+    const activeBtn = modal.querySelector('.status-option.active');
+    if (activeBtn) {
+        modal.dataset.selectedStatus = activeBtn.dataset.status;
+    }
+
+    // Close modal events
+    const closeBtn = document.getElementById('close-status-modal');
+    const cancelBtn = document.getElementById('cancel-status-update');
+    
+    const closeModal = () => {
+        modal.remove();
+    };
+
+    if (closeBtn) closeBtn.addEventListener('click', closeModal);
+    if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+
+    // Status button events
+    const statusButtons = document.getElementById('status-buttons');
+    if (statusButtons) {
+        statusButtons.addEventListener('click', (e) => {
+            const statusBtn = e.target.closest('.status-option');
+            if (statusBtn) {
+                // Update active state
+                document.querySelectorAll('.status-option').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                statusBtn.classList.add('active');
+                
+                // Store selected status
+                modal.dataset.selectedStatus = statusBtn.dataset.status;
+                console.log('✅ Status selected:', statusBtn.dataset.status);
+            }
+        });
+    }
+
+    // Notify customer button
+    const notifyBtn = document.getElementById('notify-customer-btn');
+    if (notifyBtn) {
+        notifyBtn.addEventListener('click', () => {
+            const selectedStatus = modal.dataset.selectedStatus;
+            const noteInput = document.getElementById('status-note-input');
+            const note = noteInput ? noteInput.value.trim() : '';
+            
+            if (!selectedStatus) {
+                this.showToast('Please select a status', 'error');
+                return;
+            }
+            
+            console.log('🔄 Updating order:', { orderId, selectedStatus, note });
+            this.updateOrderStatusWithNote(orderId, selectedStatus, note);
+            closeModal();
+        });
+    }
+
+    // Close modal when clicking outside
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            closeModal();
+        }
+    });
+}
+
+
+updateOrderStatusWithNote(orderId, newStatus, note = '') {
+    console.log('🔄 Updating order status with note:', { orderId, newStatus, note });
     
     const order = this.orders.find(o => o.order.orderId === orderId);
     if (!order) {
-        console.error('Order not found:', orderId);
+        console.error('❌ Order not found:', orderId);
         this.showToast('Order not found!', 'error');
-        return;
+        return false;
     }
     
     // Ensure tracking object exists
     if (!order.tracking) {
         order.tracking = {
             status: 'ordered',
-            history: []
+            history: [],
+            lastUpdated: new Date().toISOString()
         };
-    }
-    
-    // Get the note from the modal safely
-    let note = '';
-    try {
-        const noteInput = document.querySelector('.status-note-input');
-        note = noteInput ? noteInput.value : '';
-    } catch (error) {
-        console.log('Note input not found');
     }
     
     // Create status update record
     const statusUpdate = {
         status: newStatus,
         timestamp: new Date().toISOString(),
-        note: note,
         updatedBy: 'Admin'
     };
+    
+    // Add note to history if provided
+    if (note && note.trim() !== '') {
+        statusUpdate.note = note.trim();
+        
+        // ✅ CRITICAL: Save note to main tracking object
+        order.tracking.note = note.trim();
+        console.log('✅ Note saved to tracking object:', note.trim());
+    } else {
+        // Clear note if empty
+        delete order.tracking.note;
+    }
     
     // Update current status
     order.tracking.status = newStatus;
@@ -3173,30 +3263,67 @@ updateOrderStatusAction(orderId, newStatus) {
     // Save to localStorage
     try {
         localStorage.setItem('swiftbuy_orders', JSON.stringify(this.orders));
-        console.log('Order saved successfully:', order);
+        console.log('✅ Order saved successfully:', { 
+            orderId, 
+            status: newStatus,
+            note: order.tracking.note,
+            hasNote: !!order.tracking.note
+        });
+        
+        // Verify save worked
+        const savedOrders = JSON.parse(localStorage.getItem('swiftbuy_orders') || '[]');
+        const savedOrder = savedOrders.find(o => o.order.orderId === orderId);
+        console.log('✅ Verified saved order note:', savedOrder?.tracking?.note);
+        
     } catch (error) {
-        console.error('Error saving order:', error);
+        console.error('❌ Error saving order:', error);
         this.showToast('Error saving order!', 'error');
-        return;
+        return false;
     }
     
     // Update the UI
     this.updateOrdersTable();
     
     this.showToast(`Order status updated to: ${this.formatStatus(newStatus)}`);
+    return true;
+}
+
+sendStatusNotification(orderId) {
+    const order = this.orders.find(o => o.order.orderId === orderId);
+    if (!order) {
+        this.showToast('Order not found!', 'error');
+        return;
+    }
     
-    // Close the modal safely
+    // Get note from modal
+    let note = '';
+    try {
+        const noteInput = document.querySelector('.status-note-input');
+        note = noteInput ? noteInput.value.trim() : '';
+    } catch (error) {
+        console.log('Note input not found');
+    }
+    
+    // Update the note in tracking if provided
+    if (note && note !== '') {
+        if (!order.tracking) order.tracking = {};
+        order.tracking.note = note;
+        order.tracking.lastUpdated = new Date().toISOString();
+        
+        // Save to localStorage
+        localStorage.setItem('swiftbuy_orders', JSON.stringify(this.orders));
+        console.log('✅ Note saved via notification:', note);
+    }
+    
+    this.showToast(`Status notification sent to customer for order #${orderId}`);
+    
+    // Close modal
     try {
         const modal = document.getElementById('order-status-modal');
         if (modal) modal.remove();
     } catch (error) {
         console.log('Modal already closed');
     }
-}
-
-sendStatusNotification(orderId) {
-    this.showToast(`Status notification sent to customer for order #${orderId}`);
-    // In a real app, this would trigger an email/SMS notification
 }
 
 printOrder(orderId) {
