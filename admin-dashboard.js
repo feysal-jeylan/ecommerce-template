@@ -76,7 +76,7 @@ loadOrders() {
     console.log('📦 Loaded orders:', this.orders.length);
 }
 
-  loadProducts() {
+loadProducts() {
     // Load from products.js data
     try {
         // First try to load from localStorage (admin modifications)
@@ -92,12 +92,28 @@ loadOrders() {
                 this.updateProductsSection();
                 // Save imported products to localStorage for future use
                 localStorage.setItem('swiftbuy_products', JSON.stringify(module.products));
+            }).catch(error => {
+                console.warn('Failed to import products.js, using localStorage:', error);
+                // Final fallback to localStorage if import fails
+                const fallbackProducts = JSON.parse(localStorage.getItem('swiftbuy_products') || '[]');
+                this.products = fallbackProducts;
+                this.updateProductsSection();
             });
         }
     } catch (error) {
         console.warn('Error loading products, using empty array:', error);
         this.products = [];
         this.updateProductsSection();
+    }
+}
+
+// Add this function to save products when they are modified
+saveProducts() {
+    try {
+        localStorage.setItem('swiftbuy_products', JSON.stringify(this.products));
+        console.log('Products saved to localStorage');
+    } catch (error) {
+        console.error('Failed to save products:', error);
     }
 }
 
@@ -946,6 +962,7 @@ deleteProduct(productId) {
         this.showToast(`Deleted ${product.name}`);
         // Advanced: Actual deletion logic
     }
+    this.saveProducts(); // Save to localStorage after deleting
 }
 
 openAddProductModal() {
