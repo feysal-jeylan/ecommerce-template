@@ -174,9 +174,12 @@ addProduct(productData) {
 saveProducts() {
     try {
         localStorage.setItem('swiftbuy_products', JSON.stringify(this.products));
-        console.log('Products saved to localStorage');
+        console.log('✅ Products saved to localStorage:', this.products.length);
+        return true;
     } catch (error) {
-        console.error('Failed to save products:', error);
+        console.error('❌ Failed to save products:', error);
+        this.showToast('Error saving products', 'error');
+        return false;
     }
 }
 
