@@ -1021,11 +1021,37 @@ duplicateProduct(productId) {
 
 deleteProduct(productId) {
     const product = this.products.find(p => p.id === productId);
-    if (confirm(`Are you sure you want to delete "${product.name}"? This action cannot be undone.`)) {
-        this.showToast(`Deleted ${product.name}`);
-        // Advanced: Actual deletion logic
+    if (!product) {
+        this.showToast('Product not found!', 'error');
+        return false;
     }
-    this.saveProducts(); // Save to localStorage after deleting
+    
+    if (confirm(`Are you sure you want to delete "${product.name}"? This action cannot be undone.`)) {
+        try {
+            // Remove from products array
+            this.products = this.products.filter(p => p.id !== productId);
+            
+            // Remove from inventory
+            const inventory = JSON.parse(localStorage.getItem('swiftbuy_inventory_v1') || '{}');
+            delete inventory[productId];
+            localStorage.setItem('swiftbuy_inventory_v1', JSON.stringify(inventory));
+            
+            // Save updated products
+            this.saveProducts();
+            
+            // Update UI
+            this.updateProductsSection();
+            
+            this.showToast(`Product "${product.name}" deleted successfully`);
+            console.log('✅ Product deleted:', productId);
+            return true;
+        } catch (error) {
+            console.error('❌ Error deleting product:', error);
+            this.showToast('Error deleting product', 'error');
+            return false;
+        }
+    }
+    return false;
 }
 
 openAddProductModal() {
