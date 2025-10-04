@@ -3,6 +3,8 @@
 
 class AdminDashboard {
     
+
+    
 // to here
 
     getRealTimeStockQuantities() {
@@ -74,18 +76,30 @@ loadOrders() {
     console.log('📦 Loaded orders:', this.orders.length);
 }
 
-    loadProducts() {
-        // Load from products.js data
-        try {
+  loadProducts() {
+    // Load from products.js data
+    try {
+        // First try to load from localStorage (admin modifications)
+        const savedProducts = JSON.parse(localStorage.getItem('swiftbuy_products'));
+        
+        if (savedProducts && savedProducts.length > 0) {
+            this.products = savedProducts;
+            this.updateProductsSection();
+        } else {
+            // Fallback to imported products
             import('./products.js').then(module => {
                 this.products = module.products;
                 this.updateProductsSection();
+                // Save imported products to localStorage for future use
+                localStorage.setItem('swiftbuy_products', JSON.stringify(module.products));
             });
-        } catch (error) {
-            console.warn('Products module not available, using localStorage');
-            this.products = JSON.parse(localStorage.getItem('swiftbuy_products') || '[]');
         }
+    } catch (error) {
+        console.warn('Error loading products, using empty array:', error);
+        this.products = [];
+        this.updateProductsSection();
     }
+}
 
 loadCustomers() {
     // Extract customers from orders with enhanced data
