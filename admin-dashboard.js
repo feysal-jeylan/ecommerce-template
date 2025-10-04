@@ -107,6 +107,69 @@ loadProducts() {
     }
 }
 
+
+addProduct(productData) {
+    try {
+        // Generate a unique ID if not provided
+        if (!productData.id) {
+            const maxId = this.products.reduce((max, product) => {
+                const idNum = parseInt(product.id) || 0;
+                return idNum > max ? idNum : max;
+            }, 0);
+            productData.id = (maxId + 1).toString();
+        }
+
+        // Add default properties if missing
+        const newProduct = {
+            id: productData.id,
+            name: productData.name || 'New Product',
+            price: parseFloat(productData.price) || 0,
+            category: productData.category || 'Uncategorized',
+            image: productData.image || 'https://via.placeholder.com/300x200?text=No+Image',
+            description: productData.description || '',
+            inventory: {
+                stock: parseInt(productData.inventory?.stock) || 0,
+                lowStockThreshold: parseInt(productData.inventory?.lowStockThreshold) || 5
+            },
+            rating: {
+                average: 0,
+                count: 0
+            },
+            featured: productData.featured || false,
+            onSale: productData.onSale || false,
+            createdAt: new Date().toISOString(),
+            ...productData // Spread any additional properties
+        };
+
+        // Add to products array
+        this.products.push(newProduct);
+        
+        // Update inventory in localStorage
+        const inventory = JSON.parse(localStorage.getItem('swiftbuy_inventory_v1') || '{}');
+        inventory[newProduct.id] = {
+            stock: newProduct.inventory.stock,
+            lowStockThreshold: newProduct.inventory.lowStockThreshold,
+            reserved: 0
+        };
+        localStorage.setItem('swiftbuy_inventory_v1', JSON.stringify(inventory));
+        
+        // Save products to localStorage
+        this.saveProducts();
+        
+        // Update UI
+        this.updateProductsSection();
+        
+        this.showToast(`Product "${newProduct.name}" added successfully!`);
+        console.log('✅ New product added:', newProduct);
+        
+        return newProduct;
+    } catch (error) {
+        console.error('❌ Error adding product:', error);
+        this.showToast('Error adding product', 'error');
+        return null;
+    }
+}
+
 // Add this function to save products when they are modified
 saveProducts() {
     try {
