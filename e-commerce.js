@@ -1,5 +1,18 @@
 // e-commerce.js - COMPLETE FIXED VERSION
-import { products } from './products.js';
+// NEW CODE - Load from localStorage
+let products = JSON.parse(localStorage.getItem('swiftbuy_products')) || [];
+
+// Fallback to products.js if localStorage empty
+if (products.length === 0) {
+    try {
+        import('./products.js').then(module => {
+            products = module.products;
+            renderProducts();
+        });
+    } catch (error) {
+        console.warn('Products module not available');
+    }
+}
 import { CART_KEY, loadCart, saveCart, cartItemCount } from './cartModule.js';
 
 // --- DOM handles
