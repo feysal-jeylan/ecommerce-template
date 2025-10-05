@@ -3033,13 +3033,14 @@ handleImageUpload(files) {
             return;
         }
         
-        if (file.size > 5 * 1024 * 1024) {
-            this.showToast('Image size must be less than 5MB', 'error');
+        if (file.size > 2 * 1024 * 1024) { // 2MB max
+            this.showToast('Image size must be less than 2MB', 'error');
             return;
         }
         
         const reader = new FileReader();
         reader.onload = (e) => {
+            // DON'T store base64 in product data - just show preview
             const previewItem = document.createElement('div');
             previewItem.className = 'preview-item';
             previewItem.innerHTML = `
@@ -3049,6 +3050,9 @@ handleImageUpload(files) {
                 </button>
             `;
             previewContainer.appendChild(previewItem);
+            
+            // Show warning about base64
+            this.showToast('Image preview shown. Remember to use image URLs for product storage.', 'info');
         };
         reader.readAsDataURL(file);
     });
@@ -3132,15 +3136,25 @@ getProductFormData() {
                     this.getFirstPreviewImage() || 
                     'https://via.placeholder.com/300x200?text=No+Image';
     
+    // VALIDATE IMAGE - REJECT BASE64
+    if (imageUrl.startsWith('data:image')) {
+        throw new Error('Base64 images are not allowed. Please use image URLs only.');
+    }
+    
+    // VALIDATE IMAGE SIZE if it's a data URL (shouldn't happen with above check)
+    if (imageUrl.startsWith('data:image') && imageUrl.length > 10000) {
+        throw new Error('Image too large. Please use image URLs instead of base64.');
+    }
+    
     return {
         id: document.getElementById('new-product-sku').value,
-        name: document.getElementById('new-product-name').value,
+        name: document.getElementById('new-product-name').value.substring(0, 100),
         category: document.getElementById('new-product-category').value,
-        brand: document.getElementById('new-product-brand').value,
-        description: document.getElementById('new-product-description').value,
+        brand: document.getElementById('new-product-brand').value?.substring(0, 50) || '',
+        description: (document.getElementById('new-product-description').value || '').substring(0, 200),
         price: document.getElementById('new-product-price').value,
         salePrice: document.getElementById('new-product-sale-price').value || null,
-        image: imageUrl,
+        image: imageUrl, // This should now be a URL, not base64
         inventory: {
             stock: parseInt(document.getElementById('new-product-stock').value),
             lowStockThreshold: parseInt(document.getElementById('new-product-threshold').value)
@@ -3155,9 +3169,9 @@ getProductFormData() {
             class: document.getElementById('new-product-shipping').value
         },
         seo: {
-            title: document.getElementById('new-product-seo-title').value,
-            description: document.getElementById('new-product-meta-description').value,
-            slug: document.getElementById('new-product-slug').value
+            title: document.getElementById('new-product-seo-title').value?.substring(0, 60) || '',
+            description: document.getElementById('new-product-meta-description').value?.substring(0, 160) || '',
+            slug: document.getElementById('new-product-slug').value?.substring(0, 50) || ''
         },
         tags: document.getElementById('new-product-tags').value.split(',').map(tag => tag.trim()).filter(tag => tag),
         featured: document.getElementById('new-product-featured').checked,
@@ -3166,7 +3180,7 @@ getProductFormData() {
             average: 0,
             count: 0
         },
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString().split('T')[0] // Store only date to save space
     };
 }
 
