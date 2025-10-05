@@ -4,6 +4,120 @@
 class AdminDashboard {
     
 
+    // Add this method to clear storage
+clearAllData() {
+    if (confirm('⚠️ WARNING: This will delete ALL store data including orders, products, and customers. This cannot be undone! Proceed?')) {
+        try {
+            const keysToRemove = [
+                'swiftbuy_products',
+                'swiftbuy_orders', 
+                'swiftbuy_inventory_v1',
+                'swiftbuy_cart_sessions',
+                'swiftbuy_admin_settings'
+            ];
+            
+            keysToRemove.forEach(key => {
+                localStorage.removeItem(key);
+                console.log('🗑️ Removed:', key);
+            });
+            
+            this.showToast('All data cleared successfully! Refreshing page...');
+            
+            // Reload to reset everything
+            setTimeout(() => {
+                location.reload();
+            }, 2000);
+            
+        } catch (error) {
+            console.error('Error clearing data:', error);
+            this.showToast('Error clearing data', 'error');
+        }
+    }
+}
+
+
+// Add this method to analyze storage usage
+analyzeStorage() {
+    console.log('🔍 STORAGE ANALYSIS:');
+    let totalSize = 0;
+    
+    const keys = [
+        'swiftbuy_products',
+        'swiftbuy_orders', 
+        'swiftbuy_inventory_v1',
+        'swiftbuy_cart_sessions',
+        'swiftbuy_admin_settings'
+    ];
+    
+    keys.forEach(key => {
+        const data = localStorage.getItem(key);
+        if (data) {
+            const size = (data.length * 2) / 1024 / 1024; // Size in MB
+            totalSize += size;
+            console.log(`📦 ${key}: ${size.toFixed(2)} MB`);
+            
+            // Show item count for products and orders
+            if (key === 'swiftbuy_products') {
+                const products = JSON.parse(data);
+                console.log(`   Items: ${products.length} products`);
+            }
+            if (key === 'swiftbuy_orders') {
+                const orders = JSON.parse(data);
+                console.log(`   Items: ${orders.length} orders`);
+            }
+        }
+    });
+    
+    console.log(`💾 TOTAL USAGE: ${totalSize.toFixed(2)} MB`);
+    return totalSize;
+}
+// Add these methods to your AdminDashboard class
+
+checkStorageAvailable() {
+    try {
+        const testKey = 'storage_test';
+        const testData = 'test';
+        localStorage.setItem(testKey, testData);
+        localStorage.removeItem(testKey);
+        return true;
+    } catch (e) {
+        console.error('Storage not available:', e);
+        return false;
+    }
+}
+
+clearOldData() {
+    try {
+        // Keep only recent orders (last 30 days)
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        
+        this.orders = this.orders.filter(order => 
+            new Date(order.order.timestamp) > thirtyDaysAgo
+        );
+        localStorage.setItem('swiftbuy_orders', JSON.stringify(this.orders));
+        
+        // Clear cart sessions
+        localStorage.removeItem('swiftbuy_cart_sessions');
+        
+        this.showToast('Old data cleared successfully!');
+        return true;
+    } catch (error) {
+        console.error('Error clearing old data:', error);
+        this.showToast('Error clearing data', 'error');
+        return false;
+    }
+}
+
+getStorageUsage() {
+    let total = 0;
+    for (let key in localStorage) {
+        if (localStorage.hasOwnProperty(key)) {
+            total += localStorage[key].length;
+        }
+    }
+    return (total / 1024 / 1024).toFixed(2); // Return in MB
+}
     
 // to here
 
@@ -35,14 +149,14 @@ class AdminDashboard {
         this.init();
     }
 
-    init() {
-        this.loadAllData();
-        this.setupEventListeners();
-        this.setupRealTimeUpdates();
-        this.updateDashboard();
-        console.log('🚀 Enterprise Admin Dashboard Ready');
-    }
-
+  init() {
+    this.loadAllData();
+    this.setupEventListeners();
+    this.setupRealTimeUpdates();
+    this.updateDashboard();
+    this.setupAddProductModal(); // ADD THIS LINE
+    console.log('🚀 Enterprise Admin Dashboard Ready');
+}
     // ===== DATA MANAGEMENT =====
     loadAllData() {
         this.loadOrders();
@@ -2950,29 +3064,43 @@ validateProductForm() {
     ];
     
     let isValid = true;
+    let firstErrorField = null;
     
+    // Clear previous errors
+    this.clearFormValidation();
+    
+    // Validate required fields
     requiredFields.forEach(fieldId => {
         const field = document.getElementById(fieldId);
         if (!field.value.trim()) {
             field.classList.add('error');
             isValid = false;
-        } else {
-            field.classList.remove('error');
+            if (!firstErrorField) firstErrorField = field;
         }
     });
     
     // Validate price
-    const price = parseFloat(document.getElementById('new-product-price').value);
+    const priceField = document.getElementById('new-product-price');
+    const price = parseFloat(priceField.value);
     if (isNaN(price) || price < 0) {
-        document.getElementById('new-product-price').classList.add('error');
+        priceField.classList.add('error');
         isValid = false;
+        if (!firstErrorField) firstErrorField = priceField;
     }
     
     // Validate stock
-    const stock = parseInt(document.getElementById('new-product-stock').value);
+    const stockField = document.getElementById('new-product-stock');
+    const stock = parseInt(stockField.value);
     if (isNaN(stock) || stock < 0) {
-        document.getElementById('new-product-stock').classList.add('error');
+        stockField.classList.add('error');
         isValid = false;
+        if (!firstErrorField) firstErrorField = stockField;
+    }
+    
+    // Scroll to first error field
+    if (firstErrorField) {
+        firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        firstErrorField.focus();
     }
     
     return isValid;
@@ -3048,28 +3176,75 @@ getFirstPreviewImage() {
 }
 
 saveNewProduct(productData, status) {
-    // Show loading state
-    const publishBtn = document.getElementById('publish-product');
-    const originalText = publishBtn.innerHTML;
-    publishBtn.innerHTML = '<div class="btn-loading"></div>';
-    publishBtn.disabled = true;
-    
-    // Simulate API call delay
-    setTimeout(() => {
+    try {
+        // Show loading state
+        const publishBtn = document.getElementById('publish-product');
+        const originalText = publishBtn.innerHTML;
+        publishBtn.innerHTML = '<div class="btn-loading"></div>';
+        publishBtn.disabled = true;
+
+        // Check storage before proceeding
+        if (!this.checkStorageAvailable()) {
+            throw new Error('Storage is full. Please clear some data or use a different browser.');
+        }
+
+        // Optimize product data to save space
+        const optimizedProductData = {
+            id: productData.id,
+            name: productData.name.substring(0, 100), // Limit name length
+            category: productData.category,
+            price: parseFloat(productData.price),
+            image: productData.image || 'https://via.placeholder.com/300x200?text=No+Image',
+            description: (productData.description || '').substring(0, 200), // Limit description
+            inventory: {
+                stock: parseInt(productData.inventory.stock) || 0,
+                lowStockThreshold: parseInt(productData.inventory.lowStockThreshold) || 5
+            },
+            rating: {
+                average: 0,
+                count: 0
+            },
+            featured: !!productData.featured,
+            onSale: !!productData.onSale,
+            createdAt: new Date().toISOString().split('T')[0] // Store only date to save space
+        };
+
+        console.log('🔄 Saving optimized product:', optimizedProductData);
+
         // Add to products array
-        this.products.push(productData);
+        this.products.push(optimizedProductData);
         
         // Update inventory
         const inventory = JSON.parse(localStorage.getItem('swiftbuy_inventory_v1') || '{}');
-        inventory[productData.id] = {
-            stock: productData.inventory.stock,
-            lowStockThreshold: productData.inventory.lowStockThreshold,
+        inventory[optimizedProductData.id] = {
+            stock: optimizedProductData.inventory.stock,
+            lowStockThreshold: optimizedProductData.inventory.lowStockThreshold,
             reserved: 0
         };
-        localStorage.setItem('swiftbuy_inventory_v1', JSON.stringify(inventory));
         
-        // Save products to localStorage
-        localStorage.setItem('swiftbuy_products', JSON.stringify(this.products));
+        try {
+            localStorage.setItem('swiftbuy_inventory_v1', JSON.stringify(inventory));
+            console.log('✅ Inventory saved successfully');
+        } catch (inventoryError) {
+            console.error('❌ Inventory save failed:', inventoryError);
+            // Remove from products array if inventory save fails
+            this.products = this.products.filter(p => p.id !== optimizedProductData.id);
+            throw new Error('Failed to save inventory data');
+        }
+        
+        // Save products with error handling
+        try {
+            localStorage.setItem('swiftbuy_products', JSON.stringify(this.products));
+            console.log('✅ Products saved successfully. Total:', this.products.length);
+        } catch (productError) {
+            console.error('❌ Products save failed:', productError);
+            // Roll back inventory changes
+            delete inventory[optimizedProductData.id];
+            localStorage.setItem('swiftbuy_inventory_v1', JSON.stringify(inventory));
+            // Remove from products array
+            this.products = this.products.filter(p => p.id !== optimizedProductData.id);
+            throw new Error('Storage full - cannot save product. Please clear some data.');
+        }
         
         // Reset button state
         publishBtn.innerHTML = originalText;
@@ -3077,15 +3252,35 @@ saveNewProduct(productData, status) {
         
         // Close modal and show success
         document.getElementById('add-product-modal').classList.remove('active');
-        this.showToast(`Product ${status === 'published' ? 'published' : 'saved as draft'} successfully!`);
+        this.showToast(`Product "${optimizedProductData.name}" ${status === 'published' ? 'published' : 'saved as draft'} successfully!`);
         
         // Refresh the products view
         this.updateProductsSection();
         
-        // Log for debugging
-        console.log('New product added:', productData);
+        // Clear the form
+        this.resetAddProductForm();
         
-    }, 1500);
+    } catch (error) {
+        console.error('❌ Error saving product:', error);
+        
+        // Reset button state
+        const publishBtn = document.getElementById('publish-product');
+        if (publishBtn) {
+            publishBtn.innerHTML = 'Publish Product';
+            publishBtn.disabled = false;
+        }
+        
+        this.showToast(error.message || 'Error saving product', 'error');
+        
+        // Offer storage management for quota errors
+        if (error.message.includes('Storage') || error.message.includes('full')) {
+            setTimeout(() => {
+                if (confirm('Storage issue detected. Would you like to clear old data?')) {
+                    this.clearOldData();
+                }
+            }, 1500);
+        }
+    }
 }
 
 
