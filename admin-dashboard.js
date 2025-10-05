@@ -4,6 +4,65 @@
 class AdminDashboard {
     
 
+    // Add these image optimization methods to your AdminDashboard class
+
+optimizeBase64Image(base64String, maxWidth = 800, quality = 0.7) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            let width = img.width;
+            let height = img.height;
+
+            // Calculate new dimensions
+            if (width > maxWidth) {
+                height = (height * maxWidth) / width;
+                width = maxWidth;
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+
+            // Convert to optimized base64
+            const optimizedBase64 = canvas.toDataURL('image/jpeg', quality);
+            resolve(optimizedBase64);
+        };
+        img.src = base64String;
+    });
+}
+
+compressImage(file, maxSizeKB = 500) {
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            let base64 = e.target.result;
+            
+            // If image is already small, use as-is
+            const sizeKB = (base64.length * 0.75) / 1024; // Approximate base64 size
+            if (sizeKB <= maxSizeKB) {
+                resolve(base64);
+                return;
+            }
+
+            // Calculate target quality based on current size
+            let quality = Math.max(0.1, maxSizeKB / sizeKB * 0.8);
+            quality = Math.min(quality, 0.9); // Cap at 90% quality
+
+            try {
+                const optimized = await this.optimizeBase64Image(base64, 800, quality);
+                resolve(optimized);
+            } catch (error) {
+                console.warn('Image optimization failed, using original:', error);
+                resolve(base64);
+            }
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
     // Add this method to clear storage
 clearAllData() {
     if (confirm('⚠️ WARNING: This will delete ALL store data including orders, products, and customers. This cannot be undone! Proceed?')) {
@@ -3027,35 +3086,56 @@ autoGenerateSlug(productName) {
 handleImageUpload(files) {
     const previewContainer = document.getElementById('image-preview');
     
-    Array.from(files).forEach(file => {
+    // Clear previous previews
+    previewContainer.innerHTML = '';
+    
+    Array.from(files).forEach(async (file) => {
         if (!file.type.startsWith('image/')) {
             this.showToast('Please upload only image files', 'error');
             return;
         }
         
-        if (file.size > 2 * 1024 * 1024) { // 2MB max
-            this.showToast('Image size must be less than 2MB', 'error');
-            return;
-        }
+        // Show uploading state
+        const previewItem = document.createElement('div');
+        previewItem.className = 'preview-item loading';
+        previewItem.innerHTML = `
+            <div class="uploading-spinner">
+                <i class="fas fa-spinner fa-spin"></i>
+                <p>Optimizing image...</p>
+            </div>
+        `;
+        previewContainer.appendChild(previewItem);
         
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            // DON'T store base64 in product data - just show preview
-            const previewItem = document.createElement('div');
+        try {
+            // Compress and optimize the image
+            const optimizedImage = await this.compressImage(file, 300); // Max 300KB
+            
+            // Update preview with optimized image
             previewItem.className = 'preview-item';
             previewItem.innerHTML = `
-                <img src="${e.target.result}" alt="Preview">
+                <img src="${optimizedImage}" alt="Preview">
+                <div class="preview-info">
+                    <span class="file-size">${this.formatFileSize(optimizedImage)}</span>
+                    <span class="optimized-badge">Optimized</span>
+                </div>
                 <button type="button" class="preview-remove" onclick="this.parentElement.remove()">
                     <i class="fas fa-times"></i>
                 </button>
             `;
-            previewContainer.appendChild(previewItem);
             
-            // Show warning about base64
-            this.showToast('Image preview shown. Remember to use image URLs for product storage.', 'info');
-        };
-        reader.readAsDataURL(file);
+            this.showToast('Image optimized and ready!', 'success');
+            
+        } catch (error) {
+            console.error('Image processing error:', error);
+            previewItem.remove();
+            this.showToast('Error processing image', 'error');
+        }
     });
+}
+
+formatFileSize(base64String) {
+    const sizeKB = Math.round((base64String.length * 0.75) / 1024);
+    return `${sizeKB} KB`;
 }
 
 validateProductForm() {
@@ -3132,18 +3212,23 @@ saveProductAsDraft() {
 }
 
 getProductFormData() {
-    const imageUrl = document.getElementById('new-product-image-url').value || 
-                    this.getFirstPreviewImage() || 
-                    'https://via.placeholder.com/300x200?text=No+Image';
+    let imageUrl = document.getElementById('new-product-image-url').value;
+    const previewImage = this.getFirstPreviewImage();
     
-    // VALIDATE IMAGE - REJECT BASE64
-    if (imageUrl.startsWith('data:image')) {
-        throw new Error('Base64 images are not allowed. Please use image URLs only.');
+    // PRIORITY: Use preview image (uploaded) over URL input
+    if (previewImage) {
+        imageUrl = previewImage;
     }
     
-    // VALIDATE IMAGE SIZE if it's a data URL (shouldn't happen with above check)
-    if (imageUrl.startsWith('data:image') && imageUrl.length > 10000) {
-        throw new Error('Image too large. Please use image URLs instead of base64.');
+    // Fallback to placeholder if no image
+    if (!imageUrl) {
+        imageUrl = 'https://via.placeholder.com/300x200?text=No+Image';
+    }
+    
+    // OPTIMIZE base64 images if they're too large
+    if (imageUrl.startsWith('data:image') && imageUrl.length > 50000) {
+        this.showToast('Optimizing large image...', 'info');
+        imageUrl = this.optimizeBase64Image(imageUrl);
     }
     
     return {
@@ -3154,11 +3239,12 @@ getProductFormData() {
         description: (document.getElementById('new-product-description').value || '').substring(0, 200),
         price: document.getElementById('new-product-price').value,
         salePrice: document.getElementById('new-product-sale-price').value || null,
-        image: imageUrl, // This should now be a URL, not base64
+        image: imageUrl, // Now supports both URLs and optimized base64
         inventory: {
             stock: parseInt(document.getElementById('new-product-stock').value),
             lowStockThreshold: parseInt(document.getElementById('new-product-threshold').value)
         },
+        // ... rest of your properties (keep the same)
         shipping: {
             weight: document.getElementById('new-product-weight').value || 0,
             dimensions: {
@@ -3180,13 +3266,17 @@ getProductFormData() {
             average: 0,
             count: 0
         },
-        createdAt: new Date().toISOString().split('T')[0] // Store only date to save space
+        createdAt: new Date().toISOString().split('T')[0]
     };
 }
 
 getFirstPreviewImage() {
-    const previewImg = document.querySelector('.preview-item img');
-    return previewImg ? previewImg.src : null;
+    const previewItem = document.querySelector('.preview-item:not(.loading)');
+    if (previewItem) {
+        const img = previewItem.querySelector('img');
+        return img ? img.src : null;
+    }
+    return null;
 }
 
 saveNewProduct(productData, status) {
