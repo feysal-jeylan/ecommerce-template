@@ -937,10 +937,15 @@ setupBulkActions() {
         }
     });
 
-    // Bulk action apply
+    // Bulk action apply - FIX THIS PART
     const applyBulk = document.getElementById('apply-bulk-action');
     if (applyBulk) {
         applyBulk.addEventListener('click', () => {
+            const action = document.getElementById('bulk-action').value;
+            if (!action) {
+                this.showToast('Please select a bulk action from the dropdown', 'error');
+                return;
+            }
             this.applyBulkAction();
         });
     }
@@ -1213,9 +1218,39 @@ viewProductDetails(productId) {
 }
 
 duplicateProduct(productId) {
-    const product = this.products.find(p => p.id === productId);
-    this.showToast(`Duplicating ${product.name}...`);
-    // Advanced: Duplicate product logic
+    const originalProduct = this.products.find(p => p.id === productId);
+    if (!originalProduct) {
+        this.showToast('Product not found!', 'error');
+        return;
+    }
+
+    // Create duplicate with new ID
+    const duplicate = JSON.parse(JSON.stringify(originalProduct));
+    duplicate.id = `COPY-${Date.now()}`;
+    duplicate.name = `${originalProduct.name} (Copy)`;
+    duplicate.createdAt = new Date().toISOString();
+    duplicate.rating = { average: 0, count: 0 };
+    
+    // Add to products array
+    this.products.push(duplicate);
+    
+    // Update inventory
+    const inventory = JSON.parse(localStorage.getItem('swiftbuy_inventory_v1') || '{}');
+    inventory[duplicate.id] = {
+        stock: duplicate.inventory.stock,
+        lowStockThreshold: duplicate.inventory.lowStockThreshold,
+        reserved: 0
+    };
+    localStorage.setItem('swiftbuy_inventory_v1', JSON.stringify(inventory));
+    
+    // Save products
+    this.saveProducts();
+    
+    // Update UI
+    this.updateProductsSection();
+    
+    this.showToast(`Product "${originalProduct.name}" duplicated successfully!`);
+    console.log('✅ Product duplicated:', duplicate);
 }
 
 deleteProduct(productId) {
