@@ -980,8 +980,12 @@ setupBulkActions() {
     const selectAll = document.getElementById('select-all-products');
     if (selectAll) {
         selectAll.addEventListener('change', (e) => {
-            const checkboxes = document.querySelectorAll('.product-checkbox');
-            checkboxes.forEach(checkbox => {
+            // FIX: Only target checkboxes that are in visible table rows
+            const visibleCheckboxes = Array.from(document.querySelectorAll('.product-checkbox')).filter(checkbox => {
+                return checkbox.closest('tr') !== null; // Only checkboxes inside a table row
+            });
+            
+            visibleCheckboxes.forEach(checkbox => {
                 checkbox.checked = e.target.checked;
             });
             this.toggleBulkActionsBar();
@@ -995,7 +999,7 @@ setupBulkActions() {
         }
     });
 
-    // Bulk action apply - FIX THIS PART
+    // Bulk action apply - FIX THIS PART TOO
     const applyBulk = document.getElementById('apply-bulk-action');
     if (applyBulk) {
         applyBulk.addEventListener('click', () => {
