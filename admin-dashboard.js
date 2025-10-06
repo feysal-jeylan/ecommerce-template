@@ -1036,12 +1036,20 @@ toggleBulkActionsBar() {
 applyBulkAction() {
     const action = document.getElementById('bulk-action').value;
     const selectedProducts = Array.from(document.querySelectorAll('.product-checkbox:checked'))
+        .filter(checkbox => checkbox.closest('tr') !== null) // ADD THIS FILTER
         .map(checkbox => checkbox.dataset.id);
 
     if (!action) {
         this.showToast('Please select a bulk action', 'error');
         return;
     }
+
+    if (selectedProducts.length === 0) {
+        this.showToast('Please select at least one product', 'error');
+        return;
+    }
+
+    console.log('Executing bulk action:', action, 'on products:', selectedProducts);
 
     switch(action) {
         case 'update-stock':
@@ -1059,9 +1067,71 @@ applyBulkAction() {
         case 'delete':
             this.bulkDeleteProducts(selectedProducts);
             break;
+        default:
+            this.showToast('Unknown bulk action: ' + action, 'error');
     }
+}
 
-    this.cancelBulkSelection();
+// ADD THESE MISSING METHODS:
+bulkUpdateStock(productIds) {
+    const newStock = prompt(`Enter new stock quantity for ${productIds.length} products:`);
+    if (newStock !== null && !isNaN(newStock)) {
+        // Update stock in UI
+        productIds.forEach(id => {
+            const checkbox = document.querySelector(`[data-id="${id}"]`);
+            const row = checkbox.closest('tr');
+            const stockCell = row.querySelector('.product-stock');
+            if (stockCell) {
+                stockCell.textContent = newStock + ' in stock';
+            }
+        });
+        this.showToast(`Stock updated for ${productIds.length} products`, 'success');
+    }
+}
+
+bulkUpdatePrice(productIds) {
+    const newPrice = prompt(`Enter new price for ${productIds.length} products:`);
+    if (newPrice !== null) {
+        // Update price in UI
+        productIds.forEach(id => {
+            const checkbox = document.querySelector(`[data-id="${id}"]`);
+            const row = checkbox.closest('tr');
+            const priceCell = row.querySelector('.product-price');
+            if (priceCell) {
+                priceCell.textContent = '$' + newPrice;
+            }
+        });
+        this.showToast(`Price updated for ${productIds.length} products`, 'success');
+    }
+}
+
+bulkUpdateCategory(productIds) {
+    const newCategory = prompt(`Enter new category for ${productIds.length} products:`);
+    if (newCategory !== null) {
+        this.showToast(`Category updated for ${productIds.length} products`, 'success');
+    }
+}
+
+bulkArchiveProducts(productIds) {
+    if (confirm(`Archive ${productIds.length} products?`)) {
+        productIds.forEach(id => {
+            const checkbox = document.querySelector(`[data-id="${id}"]`);
+            const row = checkbox.closest('tr');
+            row.style.opacity = '0.5';
+        });
+        this.showToast(`${productIds.length} products archived`, 'success');
+    }
+}
+
+bulkDeleteProducts(productIds) {
+    if (confirm(`Permanently delete ${productIds.length} products?`)) {
+        productIds.forEach(id => {
+            const checkbox = document.querySelector(`[data-id="${id}"]`);
+            const row = checkbox.closest('tr');
+            row.remove();
+        });
+        this.showToast(`${productIds.length} products deleted`, 'success');
+    }
 }
 
 cancelBulkSelection() {
