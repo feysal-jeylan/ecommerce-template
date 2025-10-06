@@ -1541,10 +1541,10 @@ input[type="checkbox"] {
 }
 
 .product-checkbox {
-    position: absolute;
-    top: 1rem;
-    left: 1rem;
-    z-index: 2;
+  position: static !important;
+  margin: 0 auto !important;
+  display: block !important;
+  z-index: auto !important;
 }
 
 .product-image {
@@ -3346,4 +3346,21 @@ input[type="checkbox"] {
     max-height: 300px;
     border-radius: 8px;
     object-fit: cover;
+}
+
+/* ===== CHECKBOX OVERLAP FIX ===== */
+.orders-table th:first-child,
+.orders-table td:first-child {
+  width: 50px !important;
+  min-width: 50px !important;
+  max-width: 50px !important;
+  text-align: center !important;
+}
+
+.orders-table th:first-child input[type="checkbox"],
+.orders-table td:first-child input[type="checkbox"] {
+  position: static !important;
+  margin: 0 auto !important;
+  display: block !important;
+  transform: none !important;
 }
