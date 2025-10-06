@@ -3,7 +3,53 @@
 
 class AdminDashboard {
     
+safeDuplicateProduct(productId) {
+    // SAFETY LOCK - prevent multiple duplicates
+    if (this.duplicating) {
+        console.log('🚨 Duplicate blocked - already in progress');
+        return;
+    }
+    
+    this.duplicating = true;
+    
+    const originalProduct = this.products.find(p => p.id === productId);
+    if (!originalProduct) {
+        this.showToast('Product not found!', 'error');
+        this.duplicating = false;
+        return;
+    }
 
+    // CREATE ONLY ONE DUPLICATE
+    const duplicate = JSON.parse(JSON.stringify(originalProduct));
+    duplicate.id = `COPY-${Date.now()}`;
+    duplicate.name = `${originalProduct.name} (Copy)`;
+    duplicate.createdAt = new Date().toISOString();
+    
+    // Add to products array
+    this.products.push(duplicate);
+    
+    // Update inventory
+    const inventory = JSON.parse(localStorage.getItem('swiftbuy_inventory_v1') || '{}');
+    inventory[duplicate.id] = {
+        stock: duplicate.inventory.stock,
+        lowStockThreshold: duplicate.inventory.lowStockThreshold,
+        reserved: 0
+    };
+    localStorage.setItem('swiftbuy_inventory_v1', JSON.stringify(inventory));
+    
+    // Save products
+    this.saveProducts();
+    
+    // Update UI
+    this.updateProductsSection();
+    
+    this.showToast(`Created 1 copy of "${originalProduct.name}"`);
+    
+    // RELEASE LOCK after delay
+    setTimeout(() => {
+        this.duplicating = false;
+    }, 1000);
+}
     // Add these image optimization methods to your AdminDashboard class
 
 optimizeBase64Image(base64String, maxWidth = 800, quality = 0.7) {
@@ -199,14 +245,17 @@ getStorageUsage() {
         return {};
     }
 }
-    constructor() {
-        this.currentSection = 'dashboard';
-        this.orders = [];
-        this.products = [];
-        this.customers = [];
-        this.analytics = {};
-        this.init();
-    }
+ constructor() {
+    this.currentSection = 'dashboard';
+    this.orders = [];
+    this.products = [];
+    this.customers = [];
+    this.analytics = {};
+    this.duplicating = false; // ← ADD THIS LINE
+    this.productActionHandler = null; // ← ADD THIS LINE
+    this.productSearchHandler = null; // ← ADD THIS LINE
+    this.init();
+}
 
   init() {
     this.loadAllData();
@@ -770,12 +819,21 @@ renderProductsTableView(productsToShow = this.products) {
 }
 
 setupProductEventListeners() {
+    // REMOVE OLD EVENT LISTENERS FIRST
+    if (this.productSearchHandler) {
+        const searchInput = document.getElementById('product-search');
+        if (searchInput) {
+            searchInput.removeEventListener('input', this.productSearchHandler);
+        }
+    }
+
     // Search functionality
     const searchInput = document.getElementById('product-search');
     if (searchInput) {
-        searchInput.addEventListener('input', (e) => {
+        this.productSearchHandler = (e) => {
             this.filterProducts();
-        });
+        };
+        searchInput.addEventListener('input', this.productSearchHandler);
     }
 
     // Category filter
@@ -813,16 +871,16 @@ setupProductEventListeners() {
     // Bulk actions
     this.setupBulkActions();
     
-    // Product action buttons
+    // Product action buttons - CALL ONLY ONCE
     this.setupProductActions();
     
- // Add product button
-const addProductBtn = document.getElementById('add-product');
-if (addProductBtn) {
-    addProductBtn.addEventListener('click', () => {
-        this.openAddProductModal();
-    });
-}
+    // Add product button
+    const addProductBtn = document.getElementById('add-product');
+    if (addProductBtn) {
+        addProductBtn.addEventListener('click', () => {
+            this.openAddProductModal();
+        });
+    }
 
     // Quick edit modal
     this.setupQuickEditModal();
@@ -1012,23 +1070,35 @@ cancelBulkSelection() {
 }
 
 setupProductActions() {
-    document.addEventListener('click', (e) => {
+    // REMOVE EXISTING EVENT LISTENER IF ANY
+    if (this.productActionHandler) {
+        document.removeEventListener('click', this.productActionHandler);
+    }
+
+    // CREATE SINGLE EVENT HANDLER
+    this.productActionHandler = (e) => {
         const target = e.target.closest('button');
         if (!target) return;
 
         const productId = target.dataset.id;
         if (!productId) return;
 
+        // STOP EVENT PROPAGATION TO PREVENT MULTIPLE CALLS
+        e.stopPropagation();
+
         if (target.classList.contains('btn-quick-edit')) {
             this.openQuickEditModal(productId);
         } else if (target.classList.contains('btn-view')) {
             this.viewProductDetails(productId);
         } else if (target.classList.contains('btn-duplicate')) {
-            this.duplicateProduct(productId);
+            this.safeDuplicateProduct(productId);
         } else if (target.classList.contains('btn-delete')) {
             this.deleteProduct(productId);
         }
-    });
+    };
+
+    // ADD SINGLE EVENT LISTENER
+    document.addEventListener('click', this.productActionHandler);
 }
 
 setupQuickEditModal() {
@@ -1325,39 +1395,61 @@ showProductDetailsModal(product) {
 }
 
 duplicateProduct(productId) {
+    // SAFETY CHECK: Prevent multiple rapid clicks
+    if (this.duplicating) {
+        this.showToast('Please wait, duplication in progress...', 'info');
+        return;
+    }
+    
+    this.duplicating = true;
+    
     const originalProduct = this.products.find(p => p.id === productId);
     if (!originalProduct) {
         this.showToast('Product not found!', 'error');
+        this.duplicating = false;
         return;
     }
 
-    // Create duplicate with new ID
-    const duplicate = JSON.parse(JSON.stringify(originalProduct));
-    duplicate.id = `COPY-${Date.now()}`;
-    duplicate.name = `${originalProduct.name} (Copy)`;
-    duplicate.createdAt = new Date().toISOString();
-    duplicate.rating = { average: 0, count: 0 };
+    console.log('🔄 Starting duplication of:', originalProduct.name);
     
-    // Add to products array
-    this.products.push(duplicate);
-    
-    // Update inventory
-    const inventory = JSON.parse(localStorage.getItem('swiftbuy_inventory_v1') || '{}');
-    inventory[duplicate.id] = {
-        stock: duplicate.inventory.stock,
-        lowStockThreshold: duplicate.inventory.lowStockThreshold,
-        reserved: 0
-    };
-    localStorage.setItem('swiftbuy_inventory_v1', JSON.stringify(inventory));
-    
-    // Save products
-    this.saveProducts();
-    
-    // Update UI
-    this.updateProductsSection();
-    
-    this.showToast(`Product "${originalProduct.name}" duplicated successfully!`);
-    console.log('✅ Product duplicated:', duplicate);
+    try {
+        // Create ONLY ONE duplicate
+        const duplicate = JSON.parse(JSON.stringify(originalProduct));
+        duplicate.id = `COPY-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        duplicate.name = `${originalProduct.name} (Copy)`;
+        duplicate.createdAt = new Date().toISOString();
+        duplicate.rating = { average: 0, count: 0 };
+        
+        console.log('📦 Created duplicate:', duplicate.id);
+        
+        // Add ONLY ONE product to array
+        this.products.push(duplicate);
+        console.log('📊 Products count after duplication:', this.products.length);
+        
+        // Update inventory
+        const inventory = JSON.parse(localStorage.getItem('swiftbuy_inventory_v1') || '{}');
+        inventory[duplicate.id] = {
+            stock: duplicate.inventory.stock,
+            lowStockThreshold: duplicate.inventory.lowStockThreshold,
+            reserved: 0
+        };
+        localStorage.setItem('swiftbuy_inventory_v1', JSON.stringify(inventory));
+        
+        // Save products
+        this.saveProducts();
+        
+        // Update UI
+        this.updateProductsSection();
+        
+        this.showToast(`Product "${originalProduct.name}" duplicated successfully!`);
+        console.log('✅ SINGLE product duplicated successfully');
+        
+    } catch (error) {
+        console.error('❌ Duplication error:', error);
+        this.showToast('Error duplicating product', 'error');
+    } finally {
+        this.duplicating = false;
+    }
 }
 
 deleteProduct(productId) {
