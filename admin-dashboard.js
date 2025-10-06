@@ -1080,14 +1080,24 @@ saveQuickEdit() {
         lowStockThreshold: parseInt(document.getElementById('edit-product-threshold').value)
     };
 
+    console.log('🔄 QUICK EDIT DEBUG:', { productId, updates });
+
     // Update product data
     const productIndex = this.products.findIndex(p => p.id === productId);
     if (productIndex !== -1) {
+        console.log('📦 BEFORE UPDATE:', this.products[productIndex]);
+        
         this.products[productIndex].name = updates.name;
         this.products[productIndex].price = updates.price;
         this.products[productIndex].category = updates.category;
         this.products[productIndex].inventory.stock = updates.stock;
         this.products[productIndex].inventory.lowStockThreshold = updates.lowStockThreshold;
+        
+        console.log('📦 AFTER UPDATE:', this.products[productIndex]);
+    } else {
+        console.error('❌ Product not found:', productId);
+        this.showToast('Product not found!', 'error');
+        return;
     }
 
     // Update inventory data
@@ -1096,13 +1106,26 @@ saveQuickEdit() {
         inventory[productId].stock = updates.stock;
         inventory[productId].lowStockThreshold = updates.lowStockThreshold;
         localStorage.setItem('swiftbuy_inventory_v1', JSON.stringify(inventory));
+        console.log('📊 Inventory updated:', inventory[productId]);
     }
+
+    // SAVE PRODUCTS TO LOCALSTORAGE - THIS IS PROBABLY MISSING!
+    this.saveProducts();
+    
+    console.log('💾 Products saved to localStorage');
 
     this.showToast('Product updated successfully!');
     document.getElementById('quick-edit-modal').classList.remove('active');
     
     // Refresh views
     this.updateProductsSection();
+    
+    // VERIFY THE SAVE WORKED
+    setTimeout(() => {
+        const savedProducts = JSON.parse(localStorage.getItem('swiftbuy_products') || '[]');
+        const savedProduct = savedProducts.find(p => p.id === productId);
+        console.log('✅ VERIFICATION - Saved product:', savedProduct);
+    }, 500);
 }
 
 // Utility Methods
