@@ -3287,3 +3287,63 @@ input[type="checkbox"] {
 .preview-remove:hover {
     background: #dc2626;
 }
+
+
+/* Product Details Modal Styles */
+.product-details-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+}
+
+.detail-section {
+    background: var(--admin-bg);
+    padding: 1.5rem;
+    border-radius: 8px;
+    border: 1px solid var(--admin-border);
+}
+
+.detail-section.full-width {
+    grid-column: 1 / -1;
+}
+
+.detail-section h4 {
+    margin-bottom: 1rem;
+    color: var(--admin-text);
+    font-size: 1.1rem;
+    border-bottom: 1px solid var(--admin-border);
+    padding-bottom: 0.5rem;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--admin-border);
+}
+
+.detail-row:last-child {
+    border-bottom: none;
+}
+
+.detail-row label {
+    font-weight: 600;
+    color: var(--admin-text-muted);
+}
+
+.detail-row span {
+    color: var(--admin-text);
+    text-align: right;
+}
+
+.product-image-large {
+    text-align: center;
+}
+
+.product-image-large img {
+    max-width: 100%;
+    max-height: 300px;
+    border-radius: 8px;
+    object-fit: cover;
+}

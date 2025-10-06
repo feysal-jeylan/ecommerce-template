@@ -1213,8 +1213,115 @@ bulkDeleteProducts(productIds) {
 
 viewProductDetails(productId) {
     const product = this.products.find(p => p.id === productId);
-    this.showToast(`Viewing ${product.name} details...`);
-    // Advanced: Open product detail modal
+    if (!product) {
+        this.showToast('Product not found!', 'error');
+        return;
+    }
+
+    // Create and show product details modal
+    this.showProductDetailsModal(product);
+}
+
+showProductDetailsModal(product) {
+    const modalHTML = `
+        <div class="modal active" id="product-details-modal">
+            <div class="modal-content large-modal">
+                <div class="modal-header">
+                    <h3>Product Details - ${product.name}</h3>
+                    <button class="modal-close" onclick="this.closest('.modal').remove()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="product-details-grid">
+                        <div class="detail-section">
+                            <h4>Product Information</h4>
+                            <div class="detail-row">
+                                <label>Name:</label>
+                                <span>${product.name}</span>
+                            </div>
+                            <div class="detail-row">
+                                <label>SKU/ID:</label>
+                                <span>${product.id}</span>
+                            </div>
+                            <div class="detail-row">
+                                <label>Category:</label>
+                                <span>${product.category}</span>
+                            </div>
+                            <div class="detail-row">
+                                <label>Price:</label>
+                                <span>$${product.price}</span>
+                            </div>
+                            ${product.description ? `
+                            <div class="detail-row">
+                                <label>Description:</label>
+                                <span>${product.description}</span>
+                            </div>
+                            ` : ''}
+                        </div>
+
+                        <div class="detail-section">
+                            <h4>Inventory</h4>
+                            <div class="detail-row">
+                                <label>Current Stock:</label>
+                                <span>${product.inventory.stock}</span>
+                            </div>
+                            <div class="detail-row">
+                                <label>Low Stock Threshold:</label>
+                                <span>${product.inventory.lowStockThreshold}</span>
+                            </div>
+                            <div class="detail-row">
+                                <label>Status:</label>
+                                <span class="status-badge ${product.inventory.stock === 0 ? 'out-of-stock' : product.inventory.stock <= product.inventory.lowStockThreshold ? 'low-stock' : 'in-stock'}">
+                                    ${product.inventory.stock === 0 ? 'Out of Stock' : product.inventory.stock <= product.inventory.lowStockThreshold ? 'Low Stock' : 'In Stock'}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="detail-section">
+                            <h4>Performance</h4>
+                            <div class="detail-row">
+                                <label>Rating:</label>
+                                <span>${product.rating?.average || 0}/5 (${product.rating?.count || 0} reviews)</span>
+                            </div>
+                            <div class="detail-row">
+                                <label>Sales Count:</label>
+                                <span>${this.getProductSalesCount(product.id)}</span>
+                            </div>
+                            <div class="detail-row">
+                                <label>Total Revenue:</label>
+                                <span>$${this.getProductRevenue(product.id)}</span>
+                            </div>
+                        </div>
+
+                        <div class="detail-section full-width">
+                            <h4>Product Image</h4>
+                            <div class="product-image-large">
+                                <img src="${product.image}" alt="${product.name}" 
+                                     onerror="this.src='https://via.placeholder.com/400x300?text=No+Image'">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn-secondary" onclick="this.closest('.modal').remove()">
+                        Close
+                    </button>
+                    <button class="btn-primary" onclick="adminDashboard.openQuickEditModal('${product.id}'); this.closest('.modal').remove()">
+                        <i class="fas fa-edit"></i>
+                        Edit Product
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Remove existing modal if any
+    const existingModal = document.getElementById('product-details-modal');
+    if (existingModal) existingModal.remove();
+
+    // Add new modal to DOM
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
 }
 
 duplicateProduct(productId) {
