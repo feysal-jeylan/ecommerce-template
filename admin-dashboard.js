@@ -865,10 +865,13 @@ renderProductsTableView(productsToShow = this.products) {
         const salesCount = this.getProductSalesCount(product.id);
         const salesTrend = this.getSalesTrend(product.id);
 
+        // Check if this product is currently selected
+        const isChecked = document.querySelector(`.product-checkbox[data-id="${product.id}"]`)?.checked || false;
+
         return `
-        <tr>
+        <tr class="${isChecked ? 'selected' : ''}">
             <td>
-                <input type="checkbox" class="product-checkbox" data-id="${product.id}">
+                <input type="checkbox" class="product-checkbox" data-id="${product.id}" ${isChecked ? 'checked' : ''}>
             </td>
             <td>
                 <div class="product-info-cell">
@@ -930,6 +933,9 @@ renderProductsTableView(productsToShow = this.products) {
         </tr>
         `;
     }).join('');
+
+    // Update table select all state
+    this.updateTableSelectAllState();
 }
 
 setupProductEventListeners() {
