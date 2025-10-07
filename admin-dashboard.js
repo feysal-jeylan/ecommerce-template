@@ -1275,97 +1275,459 @@ executeBulkStockUpdate(productIds, stockValue) {
 }
 
 bulkUpdatePrice(productIds) {
-    const newPrice = prompt(`Enter new price for ${productIds.length} products:`);
-    if (newPrice !== null && !isNaN(newPrice) && newPrice >= 0) {
-        const priceValue = parseFloat(newPrice);
+    console.log('💰 bulkUpdatePrice called with:', productIds);
+    
+    const modalHTML = `
+        <div class="modal active" id="bulk-price-modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Update Product Prices</h3>
+                    <button class="modal-close" id="close-bulk-price">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="bulk-price-input">
+                            <i class="fas fa-tag"></i>
+                            New price for ${productIds.length} products
+                        </label>
+                        <div class="input-with-symbol">
+                            <span class="input-symbol">$</span>
+                            <input type="number" 
+                                   id="bulk-price-input" 
+                                   class="form-input" 
+                                   min="0" 
+                                   step="0.01"
+                                   placeholder="0.00"
+                                   autofocus>
+                        </div>
+                        <div class="form-hint">
+                            <i class="fas fa-info-circle"></i>
+                            Enter the new price for all selected products
+                        </div>
+                    </div>
+                    
+                    <div class="selected-products-preview">
+                        <h4>Selected Products (${productIds.length}):</h4>
+                        <div class="preview-list">
+                            ${productIds.slice(0, 5).map(id => {
+                                const product = this.products.find(p => p.id === id);
+                                const currentPrice = product ? `$${product.price}` : 'N/A';
+                                return `<div class="preview-item">
+                                    <span>${product?.name || id}</span>
+                                    <small class="text-muted">${currentPrice}</small>
+                                </div>`;
+                            }).join('')}
+                            ${productIds.length > 5 ? `<div class="preview-more">+${productIds.length - 5} more</div>` : ''}
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn-secondary" id="cancel-bulk-price">
+                        Cancel
+                    </button>
+                    <button class="btn-primary" id="apply-bulk-price">
+                        <i class="fas fa-dollar-sign"></i>
+                        Update Prices
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    const existingModal = document.getElementById('bulk-price-modal');
+    if (existingModal) existingModal.remove();
+
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    this.setupBulkPriceModal(productIds);
+}
+
+setupBulkPriceModal(productIds) {
+    const modal = document.getElementById('bulk-price-modal');
+    const priceInput = document.getElementById('bulk-price-input');
+    const applyBtn = document.getElementById('apply-bulk-price');
+    const cancelBtn = document.getElementById('cancel-bulk-price');
+    const closeBtn = document.getElementById('close-bulk-price');
+
+    setTimeout(() => priceInput?.focus(), 100);
+
+    applyBtn?.addEventListener('click', () => {
+        const priceValue = priceInput.value.trim();
         
-        // Update in memory
-        productIds.forEach(id => {
-            const product = this.products.find(p => p.id === id);
-            if (product) {
-                product.price = priceValue;
-            }
-        });
-        
-        // Persist changes
-        this.saveProducts();
-        
-        // Update UI
-        this.updateProductsSection();
-        this.showToast(`Price updated to $${priceValue} for ${productIds.length} products`, 'success');
-    }
+        if (!priceValue) {
+            this.showToast('Please enter a price', 'error');
+            priceInput.focus();
+            return;
+        }
+
+        if (isNaN(priceValue) || priceValue < 0) {
+            this.showToast('Please enter a valid price (number ≥ 0)', 'error');
+            priceInput.focus();
+            return;
+        }
+
+        this.executeBulkPriceUpdate(productIds, parseFloat(priceValue));
+        modal.remove();
+    });
+
+    priceInput?.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') applyBtn.click();
+    });
+
+    const closeModal = () => modal.remove();
+    closeBtn?.addEventListener('click', closeModal);
+    cancelBtn?.addEventListener('click', closeModal);
+    modal?.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal();
+    });
+}
+
+executeBulkPriceUpdate(productIds, priceValue) {
+    console.log('💰 Updating price to:', priceValue, 'for products:', productIds);
+    
+    productIds.forEach(id => {
+        const product = this.products.find(p => p.id === id);
+        if (product) {
+            product.price = priceValue;
+        }
+    });
+    
+    this.saveProducts();
+    this.updateProductsSection();
+    this.showToast(`✅ Prices updated to $${priceValue.toFixed(2)} for ${productIds.length} products`, 'success');
 }
 
 bulkUpdateCategory(productIds) {
-    const categories = ['electronics', 'shoe', 'sunglasses', 'backpacks', 'clothing', 'accessories'];
-    const newCategory = prompt(`Enter new category for ${productIds.length} products. Available: ${categories.join(', ')}`);
+    console.log('📂 bulkUpdateCategory called with:', productIds);
     
-    if (newCategory && categories.includes(newCategory.toLowerCase())) {
-        const categoryValue = newCategory.toLowerCase();
+    const categories = ['electronics', 'shoe', 'sunglasses', 'backpacks', 'clothing', 'accessories'];
+    
+    const modalHTML = `
+        <div class="modal active" id="bulk-category-modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Update Product Categories</h3>
+                    <button class="modal-close" id="close-bulk-category">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="bulk-category-select">
+                            <i class="fas fa-folder"></i>
+                            New category for ${productIds.length} products
+                        </label>
+                        <select id="bulk-category-select" class="form-input" autofocus>
+                            <option value="">Select a category...</option>
+                            ${categories.map(category => `
+                                <option value="${category}">${this.formatCategoryName(category)}</option>
+                            `).join('')}
+                        </select>
+                        <div class="form-hint">
+                            <i class="fas fa-info-circle"></i>
+                            Choose the new category for all selected products
+                        </div>
+                    </div>
+                    
+                    <div class="selected-products-preview">
+                        <h4>Selected Products (${productIds.length}):</h4>
+                        <div class="preview-list">
+                            ${productIds.slice(0, 5).map(id => {
+                                const product = this.products.find(p => p.id === id);
+                                const currentCategory = product?.category || 'No category';
+                                return `<div class="preview-item">
+                                    <span>${product?.name || id}</span>
+                                    <small class="text-muted">${this.formatCategoryName(currentCategory)}</small>
+                                </div>`;
+                            }).join('')}
+                            ${productIds.length > 5 ? `<div class="preview-more">+${productIds.length - 5} more</div>` : ''}
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn-secondary" id="cancel-bulk-category">
+                        Cancel
+                    </button>
+                    <button class="btn-primary" id="apply-bulk-category">
+                        <i class="fas fa-sync"></i>
+                        Update Categories
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    const existingModal = document.getElementById('bulk-category-modal');
+    if (existingModal) existingModal.remove();
+
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    this.setupBulkCategoryModal(productIds, categories);
+}
+
+setupBulkCategoryModal(productIds, categories) {
+    const modal = document.getElementById('bulk-category-modal');
+    const categorySelect = document.getElementById('bulk-category-select');
+    const applyBtn = document.getElementById('apply-bulk-category');
+    const cancelBtn = document.getElementById('cancel-bulk-category');
+    const closeBtn = document.getElementById('close-bulk-category');
+
+    setTimeout(() => categorySelect?.focus(), 100);
+
+    applyBtn?.addEventListener('click', () => {
+        const categoryValue = categorySelect.value;
         
-        // Update in memory
+        if (!categoryValue) {
+            this.showToast('Please select a category', 'error');
+            categorySelect.focus();
+            return;
+        }
+
+        if (!categories.includes(categoryValue)) {
+            this.showToast(`Invalid category. Available: ${categories.join(', ')}`, 'error');
+            return;
+        }
+
+        this.executeBulkCategoryUpdate(productIds, categoryValue);
+        modal.remove();
+    });
+
+    categorySelect?.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') applyBtn.click();
+    });
+
+    const closeModal = () => modal.remove();
+    closeBtn?.addEventListener('click', closeModal);
+    cancelBtn?.addEventListener('click', closeModal);
+    modal?.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal();
+    });
+}
+
+executeBulkCategoryUpdate(productIds, categoryValue) {
+    console.log('📂 Updating category to:', categoryValue, 'for products:', productIds);
+    
+    productIds.forEach(id => {
+        const product = this.products.find(p => p.id === id);
+        if (product) {
+            product.category = categoryValue;
+        }
+    });
+    
+    this.saveProducts();
+    this.updateProductsSection();
+    this.showToast(`✅ Categories updated to "${this.formatCategoryName(categoryValue)}" for ${productIds.length} products`, 'success');
+}
+
+formatCategoryName(category) {
+    return category.charAt(0).toUpperCase() + category.slice(1);
+}
+
+bulkArchiveProducts(productIds) {
+    console.log('📦 bulkArchiveProducts called with:', productIds);
+    
+    const modalHTML = `
+        <div class="modal active" id="bulk-archive-modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Archive Products</h3>
+                    <button class="modal-close" id="close-bulk-archive">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="warning-message">
+                        <div class="warning-icon">
+                            <i class="fas fa-archive"></i>
+                        </div>
+                        <div class="warning-content">
+                            <h4>Archive ${productIds.length} Products?</h4>
+                            <p>Archived products will be hidden from the store but not deleted. You can restore them later.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="selected-products-preview">
+                        <h4>Products to Archive:</h4>
+                        <div class="preview-list">
+                            ${productIds.slice(0, 8).map(id => {
+                                const product = this.products.find(p => p.id === id);
+                                return `<div class="preview-item archive-item">
+                                    <span>${product?.name || id}</span>
+                                    <small class="text-muted">${product?.category || 'No category'}</small>
+                                </div>`;
+                            }).join('')}
+                            ${productIds.length > 8 ? `<div class="preview-more">+${productIds.length - 8} more</div>` : ''}
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn-secondary" id="cancel-bulk-archive">
+                        Keep Products
+                    </button>
+                    <button class="btn-warning" id="apply-bulk-archive">
+                        <i class="fas fa-archive"></i>
+                        Archive Products
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    const existingModal = document.getElementById('bulk-archive-modal');
+    if (existingModal) existingModal.remove();
+
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    this.setupBulkArchiveModal(productIds);
+}
+
+setupBulkArchiveModal(productIds) {
+    const modal = document.getElementById('bulk-archive-modal');
+    const applyBtn = document.getElementById('apply-bulk-archive');
+    const cancelBtn = document.getElementById('cancel-bulk-archive');
+    const closeBtn = document.getElementById('close-bulk-archive');
+
+    applyBtn?.addEventListener('click', () => {
+        this.executeBulkArchiveUpdate(productIds);
+        modal.remove();
+    });
+
+    const closeModal = () => modal.remove();
+    closeBtn?.addEventListener('click', closeModal);
+    cancelBtn?.addEventListener('click', closeModal);
+    modal?.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal();
+    });
+}
+
+executeBulkArchiveUpdate(productIds) {
+    console.log('📦 Archiving products:', productIds);
+    
+    productIds.forEach(id => {
+        const product = this.products.find(p => p.id === id);
+        if (product) {
+            product.archived = true;
+            product.visible = false;
+        }
+    });
+    
+    this.saveProducts();
+    this.updateProductsSection();
+    this.showToast(`✅ ${productIds.length} products archived successfully`, 'success');
+}
+
+bulkDeleteProducts(productIds) {
+    console.log('🗑️ bulkDeleteProducts called with:', productIds);
+    
+    const modalHTML = `
+        <div class="modal active" id="bulk-delete-modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Delete Products</h3>
+                    <button class="modal-close" id="close-bulk-delete">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="danger-message">
+                        <div class="danger-icon">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <div class="danger-content">
+                            <h4>Permanently Delete ${productIds.length} Products?</h4>
+                            <p>This action <strong>cannot be undone</strong>. All product data, inventory, and sales history will be lost permanently.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="selected-products-preview">
+                        <h4>Products to Delete:</h4>
+                        <div class="preview-list">
+                            ${productIds.slice(0, 6).map(id => {
+                                const product = this.products.find(p => p.id === id);
+                                return `<div class="preview-item delete-item">
+                                    <span>${product?.name || id}</span>
+                                    <small class="text-muted">${product?.category || 'No category'}</small>
+                                </div>`;
+                            }).join('')}
+                            ${productIds.length > 6 ? `<div class="preview-more">+${productIds.length - 6} more</div>` : ''}
+                        </div>
+                    </div>
+                    
+                    <div class="confirmation-checkbox">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="confirm-delete">
+                            <span class="checkmark"></span>
+                            I understand this action is permanent and cannot be undone
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn-secondary" id="cancel-bulk-delete">
+                        Cancel
+                    </button>
+                    <button class="btn-danger" id="apply-bulk-delete" disabled>
+                        <i class="fas fa-trash"></i>
+                        Delete Permanently
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    const existingModal = document.getElementById('bulk-delete-modal');
+    if (existingModal) existingModal.remove();
+
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    this.setupBulkDeleteModal(productIds);
+}
+
+setupBulkDeleteModal(productIds) {
+    const modal = document.getElementById('bulk-delete-modal');
+    const applyBtn = document.getElementById('apply-bulk-delete');
+    const cancelBtn = document.getElementById('cancel-bulk-delete');
+    const closeBtn = document.getElementById('close-bulk-delete');
+    const confirmCheckbox = document.getElementById('confirm-delete');
+
+    confirmCheckbox?.addEventListener('change', (e) => {
+        applyBtn.disabled = !e.target.checked;
+    });
+
+    applyBtn?.addEventListener('click', () => {
+        this.executeBulkDeleteUpdate(productIds);
+        modal.remove();
+    });
+
+    const closeModal = () => modal.remove();
+    closeBtn?.addEventListener('click', closeModal);
+    cancelBtn?.addEventListener('click', closeModal);
+    modal?.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal();
+    });
+}
+
+executeBulkDeleteUpdate(productIds) {
+    console.log('🗑️ Deleting products:', productIds);
+    
+    try {
+        // Remove from products array
+        this.products = this.products.filter(product => !productIds.includes(product.id));
+        
+        // Remove from inventory
+        const inventory = JSON.parse(localStorage.getItem('swiftbuy_inventory_v1') || '{}');
         productIds.forEach(id => {
-            const product = this.products.find(p => p.id === id);
-            if (product) {
-                product.category = categoryValue;
-            }
+            delete inventory[id];
         });
+        localStorage.setItem('swiftbuy_inventory_v1', JSON.stringify(inventory));
         
         // Persist changes
         this.saveProducts();
         
         // Update UI
         this.updateProductsSection();
-        this.showToast(`Category updated to ${categoryValue} for ${productIds.length} products`, 'success');
-    } else if (newCategory) {
-        this.showToast(`Invalid category. Available: ${categories.join(', ')}`, 'error');
-    }
-}
-
-bulkArchiveProducts(productIds) {
-    if (confirm(`Archive ${productIds.length} products? Archived products will be hidden from the store but not deleted.`)) {
-        // Update in memory - add archive flag
-        productIds.forEach(id => {
-            const product = this.products.find(p => p.id === id);
-            if (product) {
-                product.archived = true;
-                product.visible = false;
-            }
-        });
+        this.showToast(`✅ ${productIds.length} products permanently deleted`, 'success');
         
-        // Persist changes
-        this.saveProducts();
-        
-        // Update UI - remove archived products from view
-        this.updateProductsSection();
-        this.showToast(`${productIds.length} products archived successfully`, 'success');
-    }
-}
-
-bulkDeleteProducts(productIds) {
-    if (confirm(`🚨 PERMANENTLY DELETE ${productIds.length} PRODUCTS?\n\nThis action cannot be undone! All product data, inventory, and sales history will be lost.`)) {
-        try {
-            // Remove from products array
-            this.products = this.products.filter(product => !productIds.includes(product.id));
-            
-            // Remove from inventory
-            const inventory = JSON.parse(localStorage.getItem('swiftbuy_inventory_v1') || '{}');
-            productIds.forEach(id => {
-                delete inventory[id];
-            });
-            localStorage.setItem('swiftbuy_inventory_v1', JSON.stringify(inventory));
-            
-            // Persist changes
-            this.saveProducts();
-            
-            // Update UI
-            this.updateProductsSection();
-            this.showToast(`${productIds.length} products permanently deleted`, 'success');
-            
-        } catch (error) {
-            console.error('Bulk delete error:', error);
-            this.showToast('Error deleting products', 'error');
-        }
+    } catch (error) {
+        console.error('Bulk delete error:', error);
+        this.showToast('Error deleting products', 'error');
     }
 }
 
