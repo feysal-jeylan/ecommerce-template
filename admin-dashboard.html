@@ -387,53 +387,6 @@
         </div>
     </div>
 
-    <!-- Quick Edit Modal -->
-    <div class="modal" id="quick-edit-modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Quick Edit Product</h3>
-                <button class="modal-close" id="close-quick-edit">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="modal-body">
-                <form id="quick-edit-form">
-                    <div class="form-group">
-                        <label>Product Name</label>
-                        <input type="text" id="edit-product-name" class="form-input" required>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Price ($)</label>
-                            <input type="number" id="edit-product-price" class="form-input" step="0.01" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Stock</label>
-                            <input type="number" id="edit-product-stock" class="form-input" required>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label>Category</label>
-                        <select id="edit-product-category" class="form-input">
-                            <option value="electronics">Electronics</option>
-                            <option value="shoe">Shoes</option>
-                            <option value="sunglasses">Sunglasses</option>
-                            <option value="backpacks">Backpacks</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Low Stock Threshold</label>
-                        <input type="number" id="edit-product-threshold" class="form-input" value="5">
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn-cancel" id="cancel-quick-edit">Cancel</button>
-                <button type="button" class="btn-primary" id="save-quick-edit">Save Changes</button>
-            </div>
-        </div>
-    </div>
-
 
     <!-- Add Product Modal -->
 <div class="modal" id="add-product-modal">
@@ -1658,6 +1611,53 @@
         </div>
         <div class="notifications-list" id="notifications-list">
             <!-- Notifications populated by JS -->
+        </div>
+    </div>
+
+      <!-- Quick Edit Modal -->
+    <div class="modal" id="quick-edit-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Quick Edit Product</h3>
+                <button class="modal-close" id="close-quick-edit">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="quick-edit-form">
+                    <div class="form-group">
+                        <label>Product Name</label>
+                        <input type="text" id="edit-product-name" class="form-input" required>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Price ($)</label>
+                            <input type="number" id="edit-product-price" class="form-input" step="0.01" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Stock</label>
+                            <input type="number" id="edit-product-stock" class="form-input" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Category</label>
+                        <select id="edit-product-category" class="form-input">
+                            <option value="electronics">Electronics</option>
+                            <option value="shoe">Shoes</option>
+                            <option value="sunglasses">Sunglasses</option>
+                            <option value="backpacks">Backpacks</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Low Stock Threshold</label>
+                        <input type="number" id="edit-product-threshold" class="form-input" value="5">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" id="cancel-quick-edit">Cancel</button>
+                <button type="button" class="btn-primary" id="save-quick-edit">Save Changes</button>
+            </div>
         </div>
     </div>
 

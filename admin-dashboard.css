@@ -3952,3 +3952,149 @@ input[type="checkbox"] {
         min-height: 44px;
     }
 }
+
+/* ===== INVENTORY ACTION STYLES ===== */
+
+/* Restock Modal Styles */
+.inventory-preview {
+    margin-top: 1.5rem;
+    padding: 1rem;
+    background: var(--admin-bg);
+    border-radius: 8px;
+    border: 1px solid var(--admin-border);
+}
+
+.preview-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.preview-item img {
+    width: 50px;
+    height: 50px;
+    border-radius: 8px;
+    object-fit: cover;
+}
+
+.preview-details {
+    flex: 1;
+}
+
+.preview-details strong {
+    display: block;
+    color: var(--admin-text);
+    margin-bottom: 0.25rem;
+}
+
+.preview-details span {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--admin-text-muted);
+    margin-bottom: 0.1rem;
+}
+
+/* Enhanced action buttons for inventory */
+.restock-item {
+    background: var(--admin-success);
+    color: white;
+    border-color: var(--admin-success);
+}
+
+.restock-item:hover {
+    background: #059669;
+    border-color: #059669;
+    transform: translateY(-2px);
+}
+
+.edit-item {
+    background: var(--admin-warning);
+    color: white;
+    border-color: var(--admin-warning);
+}
+
+.edit-item:hover {
+    background: #d97706;
+    border-color: #d97706;
+    transform: translateY(-2px);
+}
+
+/* Mobile optimizations for inventory actions */
+@media (max-width: 768px) {
+    .inventory-card-actions {
+        justify-content: flex-start;
+    }
+    
+    .inventory-card-actions .btn-action {
+        min-width: 44px;
+        min-height: 44px;
+    }
+}
+
+/* Quick action animations */
+@keyframes quickAction {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+.btn-action:active {
+    animation: quickAction 0.2s ease;
+}
+/* ===== QUICK EDIT MODAL VISIBILITY FIX ===== */
+
+/* Force modal visibility - override any conflicting styles */
+#quick-edit-modal {
+    display: none !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    background: rgba(0, 0, 0, 0.5) !important;
+    z-index: 10000 !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    transition: opacity 0.3s ease !important;
+}
+
+#quick-edit-modal.active {
+    display: flex !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+/* Modal content positioning */
+#quick-edit-modal .modal-content {
+    position: relative !important;
+    z-index: 10001 !important;
+    margin: auto !important;
+    background: white !important;
+    border-radius: 12px !important;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3) !important;
+    transform: scale(0.9) !important;
+    transition: transform 0.3s ease !important;
+    max-width: 500px !important;
+    width: 90% !important;
+    max-height: 90vh !important;
+    overflow-y: auto !important;
+}
+
+#quick-edit-modal.active .modal-content {
+    transform: scale(1) !important;
+}
+
+/* Ensure no parent elements are hiding the modal */
+body .admin-container .admin-main .admin-content {
+    position: static !important;
+}
+
+/* Override any potential hiding from other modals */
+.modal {
+    z-index: 10000 !important;
+}
+
+.modal.active {
+    z-index: 10000 !important;
+}
+

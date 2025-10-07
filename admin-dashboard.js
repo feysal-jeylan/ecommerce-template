@@ -2173,20 +2173,96 @@ setupQuickEditModal() {
 }
 
 openQuickEditModal(productId) {
+    console.log('🎯 openQuickEditModal called with:', productId);
+    
     const product = this.products.find(p => p.id === productId);
-    if (!product) return;
+    if (!product) {
+        console.error('❌ Product not found in openQuickEditModal:', productId);
+        this.showToast('Product not found', 'error');
+        return;
+    }
 
+    console.log('✅ Product found for editing:', product.name);
+
+    // Get real-time inventory data
     const inventory = JSON.parse(localStorage.getItem('swiftbuy_inventory_v1') || '{}');
     const productInventory = inventory[productId];
 
-    document.getElementById('edit-product-name').value = product.name;
-    document.getElementById('edit-product-price').value = product.price;
-    document.getElementById('edit-product-stock').value = productInventory ? productInventory.stock : product.inventory.stock;
-    document.getElementById('edit-product-category').value = product.category;
-    document.getElementById('edit-product-threshold').value = productInventory ? productInventory.lowStockThreshold : product.inventory.lowStockThreshold;
+    console.log('📊 Inventory data:', productInventory);
 
-    document.getElementById('quick-edit-modal').classList.add('active');
-    document.getElementById('quick-edit-form').dataset.productId = productId;
+    // Populate the form fields
+    const nameField = document.getElementById('edit-product-name');
+    const priceField = document.getElementById('edit-product-price');
+    const stockField = document.getElementById('edit-product-stock');
+    const categoryField = document.getElementById('edit-product-category');
+    const thresholdField = document.getElementById('edit-product-threshold');
+
+    console.log('📝 Form fields:', {
+        nameField: !!nameField,
+        priceField: !!priceField,
+        stockField: !!stockField,
+        categoryField: !!categoryField,
+        thresholdField: !!thresholdField
+    });
+
+    if (nameField) {
+        nameField.value = product.name || '';
+        console.log('✅ Name field set to:', product.name);
+    }
+    if (priceField) {
+        priceField.value = product.price || '';
+        console.log('✅ Price field set to:', product.price);
+    }
+    if (stockField) {
+        const stockValue = productInventory ? productInventory.stock : product.inventory.stock;
+        stockField.value = stockValue;
+        console.log('✅ Stock field set to:', stockValue);
+    }
+    if (categoryField) {
+        categoryField.value = product.category || '';
+        console.log('✅ Category field set to:', product.category);
+    }
+    if (thresholdField) {
+        const thresholdValue = productInventory ? productInventory.lowStockThreshold : product.inventory.lowStockThreshold;
+        thresholdField.value = thresholdValue;
+        console.log('✅ Threshold field set to:', thresholdValue);
+    }
+
+    // Set the product ID on the form
+    const form = document.getElementById('quick-edit-form');
+    if (form) {
+        form.dataset.productId = productId;
+        console.log('✅ Form product ID set to:', productId);
+    } else {
+        console.error('❌ Quick edit form not found!');
+    }
+
+    // Show the modal - THIS IS THE CRITICAL PART
+    const modal = document.getElementById('quick-edit-modal');
+    if (modal) {
+        console.log('✅ Quick edit modal found, activating...');
+        
+        // Force the modal to be visible
+        modal.classList.add('active');
+        modal.style.display = 'flex'; // Force display
+        modal.style.opacity = '1';
+        modal.style.visibility = 'visible';
+        
+        console.log('✅ Modal classes:', modal.className);
+        console.log('✅ Modal display style:', modal.style.display);
+        
+        // Focus on the first field
+        setTimeout(() => {
+            if (nameField) {
+                nameField.focus();
+                nameField.select();
+                console.log('✅ Name field focused');
+            }
+        }, 100);
+    } else {
+        console.error('❌ Quick edit modal element not found!');
+        this.showToast('Edit modal not available', 'error');
+    }
 }
 
 saveQuickEdit() {
@@ -2980,7 +3056,15 @@ switchSection(sectionId) {
 updateInventorySection() {
     this.renderInventoryTableView();
     this.renderInventoryMobileCards();
-    this.setupInventoryEventListeners();
+    this.setupInventoryEventListeners(); // This now includes the enhanced actions
+    
+    // Hide loading and empty states if we have products
+    if (this.products.length > 0) {
+        const emptyState = document.getElementById('inventory-empty');
+        const loadingState = document.getElementById('inventory-loading');
+        if (emptyState) emptyState.style.display = 'none';
+        if (loadingState) loadingState.style.display = 'none';
+    }
 }
 
 renderInventoryTableView() {
@@ -3125,12 +3209,217 @@ setupInventoryEventListeners() {
     document.addEventListener('click', (e) => {
         if (e.target.closest('.restock-item')) {
             const productId = e.target.closest('.restock-item').dataset.id;
-            this.restockInventoryItem(productId);
+            this.showRestockModal(productId);
         } else if (e.target.closest('.edit-item')) {
             const productId = e.target.closest('.edit-item').dataset.id;
             this.editInventoryItem(productId);
         }
     });
+}
+
+// Add these new methods for inventory actions:
+
+showRestockModal(productId) {
+    const product = this.products.find(p => p.id === productId);
+    if (!product) {
+        this.showToast('Product not found', 'error');
+        return;
+    }
+
+    const inventory = JSON.parse(localStorage.getItem('swiftbuy_inventory_v1') || '{}');
+    const currentStock = inventory[product.id] ? inventory[product.id].stock : product.inventory.stock;
+
+    const modalHTML = `
+        <div class="modal active" id="restock-modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Restock ${product.name}</h3>
+                    <button class="modal-close" id="close-restock-modal">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="restock-quantity">
+                            <i class="fas fa-boxes"></i>
+                            Quantity to Add
+                        </label>
+                        <input type="number" 
+                               id="restock-quantity" 
+                               class="form-input" 
+                               min="1" 
+                               max="1000"
+                               value="10"
+                               placeholder="Enter quantity..."
+                               autofocus>
+                        <div class="form-hint">
+                            <i class="fas fa-info-circle"></i>
+                            Current stock: <strong>${currentStock}</strong> units
+                        </div>
+                    </div>
+                    
+                    <div class="inventory-preview">
+                        <div class="preview-item">
+                            <img src="${product.image}" alt="${product.name}" 
+                                 onerror="this.src='https://via.placeholder.com/50x50?text=P'">
+                            <div class="preview-details">
+                                <strong>${product.name}</strong>
+                                <span>SKU: ${product.id}</span>
+                                <span>Category: ${product.category}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn-secondary" id="cancel-restock">
+                        Cancel
+                    </button>
+                    <button class="btn-primary" id="confirm-restock">
+                        <i class="fas fa-boxes"></i>
+                        Restock Product
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Remove existing modal if any
+    const existingModal = document.getElementById('restock-modal');
+    if (existingModal) existingModal.remove();
+
+    // Add modal to DOM
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    
+    // Setup event listeners for the modal
+    this.setupRestockModalEvents(productId, currentStock);
+}
+
+setupRestockModalEvents(productId, currentStock) {
+    const modal = document.getElementById('restock-modal');
+    const quantityInput = document.getElementById('restock-quantity');
+    const confirmBtn = document.getElementById('confirm-restock');
+    const cancelBtn = document.getElementById('cancel-restock');
+    const closeBtn = document.getElementById('close-restock-modal');
+
+    // Focus on quantity input
+    setTimeout(() => {
+        quantityInput?.focus();
+        quantityInput?.select();
+    }, 100);
+
+    // Confirm restock
+    confirmBtn?.addEventListener('click', () => {
+        const quantity = parseInt(quantityInput.value);
+        
+        if (!quantity || quantity < 1) {
+            this.showToast('Please enter a valid quantity', 'error');
+            quantityInput.focus();
+            return;
+        }
+
+        if (quantity > 1000) {
+            this.showToast('Maximum restock quantity is 1000 units', 'error');
+            quantityInput.focus();
+            return;
+        }
+
+        this.executeRestock(productId, quantity);
+        modal.remove();
+    });
+
+    // Enter key support
+    quantityInput?.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            confirmBtn.click();
+        }
+    });
+
+    // Close modal
+    const closeModal = () => modal.remove();
+    closeBtn?.addEventListener('click', closeModal);
+    cancelBtn?.addEventListener('click', closeModal);
+    modal?.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal();
+    });
+}
+
+executeRestock(productId, quantity) {
+    const product = this.products.find(p => p.id === productId);
+    if (!product) {
+        this.showToast('Product not found', 'error');
+        return;
+    }
+
+    // Update inventory in memory
+    const inventory = JSON.parse(localStorage.getItem('swiftbuy_inventory_v1') || '{}');
+    
+    if (inventory[productId]) {
+        inventory[productId].stock += quantity;
+    } else {
+        inventory[productId] = {
+            stock: quantity,
+            lowStockThreshold: product.inventory.lowStockThreshold,
+            reserved: 0
+        };
+    }
+
+    // Update product data
+    product.inventory.stock = inventory[productId].stock;
+
+    // Save to localStorage
+    localStorage.setItem('swiftbuy_inventory_v1', JSON.stringify(inventory));
+    this.saveProducts();
+
+    // Update UI
+    this.updateInventorySection();
+    
+    this.showToast(`✅ Restocked ${quantity} units of "${product.name}"`, 'success');
+    console.log(`🔄 Restocked ${product.name}: +${quantity} units`);
+}
+
+editInventoryItem(productId) {
+    console.log('🔄 EDIT BUTTON CLICKED - Product ID:', productId);
+    
+    const product = this.products.find(p => p.id === productId);
+    if (!product) {
+        console.error('❌ Product not found:', productId);
+        this.showToast('Product not found', 'error');
+        return;
+    }
+
+    console.log('✅ Product found:', product.name);
+    
+    // Close any open modals first
+    const existingModal = document.getElementById('restock-modal');
+    if (existingModal) {
+        console.log('🗑️ Closing restock modal');
+        existingModal.remove();
+    }
+
+    // Check if quick edit modal element exists
+    const quickEditModal = document.getElementById('quick-edit-modal');
+    if (!quickEditModal) {
+        console.error('❌ Quick edit modal element not found in DOM!');
+        this.showToast('Edit feature not available', 'error');
+        return;
+    }
+
+    console.log('✅ Quick edit modal element found');
+    
+    // Check if openQuickEditModal method exists
+    if (typeof this.openQuickEditModal !== 'function') {
+        console.error('❌ openQuickEditModal method not found!');
+        this.showToast('Edit method not available', 'error');
+        return;
+    }
+
+    console.log('✅ openQuickEditModal method exists, calling it...');
+    
+    // Open the quick edit modal
+    this.openQuickEditModal(productId);
+    this.showToast(`Editing ${product.name}`);
+    
+    console.log('✅ Edit process completed');
 }
 
 showInventoryEmptyState() {
@@ -3152,13 +3441,6 @@ restockInventoryItem(productId) {
     }
 }
 
-editInventoryItem(productId) {
-    const product = this.products.find(p => p.id === productId);
-    if (product) {
-        this.openQuickEditModal(productId);
-        this.showToast(`Editing ${product.name}`);
-    }
-}
 
 updateCustomersSection() {
     this.updateCustomerStats();
