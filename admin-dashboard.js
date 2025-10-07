@@ -1059,12 +1059,10 @@ toggleBulkActionsBar() {
     }
 }
 
-applyBulkAction(event) {  // ADD EVENT PARAMETER
-    // ADD THESE TWO LINES AT THE START
-     if (event) {
+applyBulkAction(event) {
+    if (event) {
         event.preventDefault();
         event.stopPropagation();
-        event.stopImmediatePropagation(); // ADD THIS LINE TOO
     }
     
     console.log('🔄 applyBulkAction called');
@@ -1072,9 +1070,14 @@ applyBulkAction(event) {  // ADD EVENT PARAMETER
     const action = document.getElementById('bulk-action').value;
     console.log('📋 Selected action:', action);
     
+    // FIX: Include both grid AND table checkboxes
     const selectedProducts = Array.from(document.querySelectorAll('.product-checkbox:checked'))
-        .filter(checkbox => checkbox.closest('tr') !== null)
-        .map(checkbox => checkbox.dataset.id);
+        .filter(checkbox => {
+            // Include checkboxes from BOTH grid and table views
+            return checkbox.closest('tr') !== null || checkbox.closest('.product-card') !== null;
+        })
+        .map(checkbox => checkbox.dataset.id)
+        .filter(id => id !== undefined && id !== ''); // Remove empty IDs
 
     console.log('🎯 Selected product IDs:', selectedProducts);
 
@@ -1093,7 +1096,6 @@ applyBulkAction(event) {  // ADD EVENT PARAMETER
     console.log('🚀 Executing bulk action:', action, 'on products:', selectedProducts);
 
     try {
-        // Bind methods to ensure correct 'this' context
         const boundMethods = {
             'update-stock': this.bulkUpdateStock.bind(this),
             'update-price': this.bulkUpdatePrice.bind(this),
