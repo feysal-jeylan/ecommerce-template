@@ -2,6 +2,20 @@
 
 
 class AdminDashboard {
+
+    // ===== DEBUG HELPER METHODS =====
+
+debugBulkActions() {
+    console.group('🔧 BULK ACTIONS DEBUG INFO');
+    console.log('📋 Available products:', this.products.length);
+    console.log('🎯 Selected checkboxes:', document.querySelectorAll('.product-checkbox:checked').length);
+    console.log('⚡ Bulk action dropdown value:', document.getElementById('bulk-action')?.value);
+    console.log('📦 Inventory data:', JSON.parse(localStorage.getItem('swiftbuy_inventory_v1') || '{}'));
+    console.groupEnd();
+}
+
+// Call this in your applyBulkAction method for debugging
+// this.debugBulkActions();
     
 safeDuplicateProduct(productId) {
     // SAFETY LOCK - prevent multiple duplicates
@@ -395,12 +409,28 @@ addProduct(productData) {
 // Add this function to save products when they are modified
 saveProducts() {
     try {
-        localStorage.setItem('swiftbuy_products', JSON.stringify(this.products));
-        console.log('✅ Products saved to localStorage:', this.products.length);
-        return true;
+        console.log('💾 Attempting to save', this.products.length, 'products...');
+        
+        const productsJSON = JSON.stringify(this.products);
+        console.log('📦 Products JSON size:', productsJSON.length, 'characters');
+        
+        localStorage.setItem('swiftbuy_products', productsJSON);
+        
+        // Verify the save worked
+        const savedProducts = JSON.parse(localStorage.getItem('swiftbuy_products') || '[]');
+        console.log('✅ Save verification:', savedProducts.length, 'products saved');
+        
+        if (savedProducts.length === this.products.length) {
+            console.log('✅ Products saved successfully to localStorage');
+            return true;
+        } else {
+            console.error('❌ Save verification failed: count mismatch');
+            return false;
+        }
+        
     } catch (error) {
         console.error('❌ Failed to save products:', error);
-        this.showToast('Error saving products', 'error');
+        this.showToast('Error saving products: ' + error.message, 'error');
         return false;
     }
 }
@@ -980,9 +1010,8 @@ setupBulkActions() {
     const selectAll = document.getElementById('select-all-products');
     if (selectAll) {
         selectAll.addEventListener('change', (e) => {
-            // FIX: Only target checkboxes that are in visible table rows
             const visibleCheckboxes = Array.from(document.querySelectorAll('.product-checkbox')).filter(checkbox => {
-                return checkbox.closest('tr') !== null; // Only checkboxes inside a table row
+                return checkbox.closest('tr') !== null;
             });
             
             visibleCheckboxes.forEach(checkbox => {
@@ -999,17 +1028,11 @@ setupBulkActions() {
         }
     });
 
-    // Bulk action apply - FIX THIS PART TOO
+    // Bulk action apply
     const applyBulk = document.getElementById('apply-bulk-action');
     if (applyBulk) {
-        applyBulk.addEventListener('click', () => {
-            const action = document.getElementById('bulk-action').value;
-            if (!action) {
-                this.showToast('Please select a bulk action from the dropdown', 'error');
-                return;
-            }
-            this.applyBulkAction();
-        });
+        // REMOVE THE DUPLICATE LISTENER - KEEP THIS ONE
+        applyBulk.addEventListener('click', this.applyBulkAction.bind(this));
     }
 
     // Cancel bulk
@@ -1019,6 +1042,9 @@ setupBulkActions() {
             this.cancelBulkSelection();
         });
     }
+
+    // REMOVE THIS LINE - IT'S CREATING DUPLICATE EVENT LISTENERS
+    // this.setupProductActions();
 }
 
 toggleBulkActionsBar() {
@@ -1033,45 +1059,62 @@ toggleBulkActionsBar() {
     }
 }
 
-applyBulkAction() {
+applyBulkAction(event) {  // ADD EVENT PARAMETER
+    // ADD THESE TWO LINES AT THE START
+     if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation(); // ADD THIS LINE TOO
+    }
+    
+    console.log('🔄 applyBulkAction called');
+    
     const action = document.getElementById('bulk-action').value;
+    console.log('📋 Selected action:', action);
+    
     const selectedProducts = Array.from(document.querySelectorAll('.product-checkbox:checked'))
         .filter(checkbox => checkbox.closest('tr') !== null)
         .map(checkbox => checkbox.dataset.id);
 
+    console.log('🎯 Selected product IDs:', selectedProducts);
+
     if (!action) {
-        this.showToast('Please select a bulk action', 'error');
+        this.showToast('Please select a bulk action from the dropdown', 'error');
+        console.error('❌ No action selected');
         return;
     }
 
     if (selectedProducts.length === 0) {
         this.showToast('Please select at least one product', 'error');
+        console.error('❌ No products selected');
         return;
     }
 
-    console.log('Executing bulk action:', action, 'on products:', selectedProducts);
+    console.log('🚀 Executing bulk action:', action, 'on products:', selectedProducts);
 
-    switch(action) {
-        case 'update-stock':
-            this.bulkUpdateStock(selectedProducts);
-            break;
-        case 'update-price':
-            this.bulkUpdatePrice(selectedProducts);
-            break;
-        case 'update-category':
-            this.bulkUpdateCategory(selectedProducts);
-            break;
-        case 'archive':
-            this.bulkArchiveProducts(selectedProducts);
-            break;
-        case 'delete':
-            this.bulkDeleteProducts(selectedProducts);
-            break;
-        case 'bulk-edit':
-            this.showBulkEditModal(selectedProducts);
-            break;
-        default:
+    try {
+        // Bind methods to ensure correct 'this' context
+        const boundMethods = {
+            'update-stock': this.bulkUpdateStock.bind(this),
+            'update-price': this.bulkUpdatePrice.bind(this),
+            'update-category': this.bulkUpdateCategory.bind(this),
+            'archive': this.bulkArchiveProducts.bind(this),
+            'delete': this.bulkDeleteProducts.bind(this),
+            'bulk-edit': this.showBulkEditModal.bind(this)
+        };
+
+        const method = boundMethods[action];
+        if (method) {
+            console.log('✅ Calling method:', method.name);
+            method(selectedProducts);
+        } else {
             this.showToast('Unknown bulk action: ' + action, 'error');
+            console.error('❌ Unknown action:', action);
+        }
+        
+    } catch (error) {
+        console.error('💥 Bulk action error:', error);
+        this.showToast('Error executing bulk action: ' + error.message, 'error');
     }
     
     // Close bulk actions after completion
@@ -1082,33 +1125,70 @@ applyBulkAction() {
 // ===== ADVANCED BULK OPERATIONS SYSTEM =====
 
 bulkUpdateStock(productIds) {
+    console.log('🔄 bulkUpdateStock called with:', productIds);
+    
     const newStock = prompt(`Enter new stock quantity for ${productIds.length} products:`);
+    console.log('📝 User input:', newStock);
+    
     if (newStock !== null && !isNaN(newStock) && newStock >= 0) {
         const stockValue = parseInt(newStock);
+        console.log('🔢 Parsed stock value:', stockValue);
         
         // Update in memory
         productIds.forEach(id => {
+            console.log('📦 Updating product:', id);
             const product = this.products.find(p => p.id === id);
             if (product) {
+                console.log('📊 Before update:', product.inventory.stock);
                 product.inventory.stock = stockValue;
+                console.log('📊 After update:', product.inventory.stock);
+            } else {
+                console.warn('⚠️ Product not found:', id);
             }
             
             // Update inventory system
             const inventory = JSON.parse(localStorage.getItem('swiftbuy_inventory_v1') || '{}');
+            console.log('📋 Current inventory for', id, ':', inventory[id]);
+            
             if (inventory[id]) {
                 inventory[id].stock = stockValue;
+                console.log('📋 Updated inventory:', inventory[id]);
+            } else {
+                console.warn('⚠️ No inventory record for:', id);
+                // Create inventory record if it doesn't exist
+                inventory[id] = {
+                    stock: stockValue,
+                    lowStockThreshold: 5,
+                    reserved: 0
+                };
+                console.log('📋 Created new inventory record:', inventory[id]);
             }
+            
+            localStorage.setItem('swiftbuy_inventory_v1', JSON.stringify(inventory));
         });
         
-        // Persist changes
-        this.saveProducts();
-        localStorage.setItem('swiftbuy_inventory_v1', JSON.stringify(
-            JSON.parse(localStorage.getItem('swiftbuy_inventory_v1') || '{}')
-        ));
+        // Persist changes to products
+        console.log('💾 Saving products to localStorage...');
+        const saveResult = this.saveProducts();
+        console.log('💾 Save result:', saveResult);
+        
+        // Verify the save worked
+        setTimeout(() => {
+            const savedProducts = JSON.parse(localStorage.getItem('swiftbuy_products') || '[]');
+            const sampleProduct = savedProducts.find(p => p.id === productIds[0]);
+            console.log('✅ Verification - saved product stock:', sampleProduct?.inventory?.stock);
+        }, 100);
         
         // Update UI
+        console.log('🎨 Updating UI...');
         this.updateProductsSection();
+        
         this.showToast(`Stock updated to ${stockValue} for ${productIds.length} products`, 'success');
+        console.log('✅ bulkUpdateStock completed successfully');
+        
+    } else if (newStock !== null) {
+        this.showToast('Please enter a valid stock quantity (number ≥ 0)', 'error');
+        console.error('❌ Invalid stock input:', newStock);
     }
 }
 
