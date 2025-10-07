@@ -676,7 +676,33 @@ renderProductsGridView(productsToShow = this.products) {
     // Get real-time inventory data
     const inventory = JSON.parse(localStorage.getItem('swiftbuy_inventory_v1') || '{}');
 
-    container.innerHTML = productsToShow.map(product => {
+    // Create grid header with select all
+    const selectedCount = document.querySelectorAll('.product-checkbox:checked').length;
+    const totalCount = productsToShow.length;
+    
+    const gridHeader = `
+        <div class="products-grid-header">
+            <div class="grid-select-all">
+                <input type="checkbox" id="select-all-grid" ${selectedCount === totalCount && totalCount > 0 ? 'checked' : ''}>
+                <label for="select-all-grid">
+                    ${selectedCount > 0 ? `${selectedCount} selected` : 'Select all'}
+                </label>
+            </div>
+            <div class="grid-controls">
+                <span class="grid-count">${totalCount} products</span>
+                <div class="view-toggle">
+                    <button class="view-btn active" data-view="grid">
+                        <i class="fas fa-th"></i>
+                    </button>
+                    <button class="view-btn" data-view="table">
+                        <i class="fas fa-list"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    const productsGrid = productsToShow.map(product => {
         const productInventory = inventory[product.id];
         const realTimeStock = productInventory ? productInventory.stock : product.inventory.stock;
         const lowStockThreshold = productInventory ? productInventory.lowStockThreshold : product.inventory.lowStockThreshold;
@@ -686,13 +712,16 @@ renderProductsGridView(productsToShow = this.products) {
         const statusText = realTimeStock === 0 ? 'Out of Stock' : 
                           realTimeStock <= lowStockThreshold ? 'Low Stock' : 'In Stock';
 
-        const stockPercentage = Math.min((realTimeStock / 20) * 100, 100); // Assuming max stock of 20 for visual
+        const stockPercentage = Math.min((realTimeStock / 20) * 100, 100);
         const salesCount = this.getProductSalesCount(product.id);
         const revenue = this.getProductRevenue(product.id);
 
+        const isChecked = document.querySelector(`.product-checkbox[data-id="${product.id}"]`)?.checked || false;
+
         return `
-        <div class="product-card" data-id="${product.id}">
-            <input type="checkbox" class="product-checkbox" data-id="${product.id}">
+        <div class="product-card ${isChecked ? 'selected' : ''}" data-id="${product.id}">
+            <input type="checkbox" class="product-checkbox" data-id="${product.id}" ${isChecked ? 'checked' : ''}>
+            <div class="product-checkbox-indicator"></div>
             
             <div class="product-image">
                 <img src="${product.image}" alt="${product.name}" onerror="this.src='https://via.placeholder.com/300x200?text=No+Image'">
@@ -759,6 +788,61 @@ renderProductsGridView(productsToShow = this.products) {
         </div>
         `;
     }).join('');
+
+    container.innerHTML = gridHeader + `<div class="products-grid">${productsGrid}</div>`;
+    
+    // Setup grid select all functionality
+    this.setupGridSelectAll();
+}
+
+setupGridSelectAll() {
+    const selectAllGrid = document.getElementById('select-all-grid');
+    if (!selectAllGrid) return;
+
+    selectAllGrid.addEventListener('change', (e) => {
+        const checkboxes = document.querySelectorAll('#products-grid .product-checkbox');
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = e.target.checked;
+            const productCard = checkbox.closest('.product-card');
+            if (productCard) {
+                productCard.classList.toggle('selected', e.target.checked);
+            }
+        });
+        this.toggleBulkActionsBar();
+        this.updateGridSelectAllText();
+    });
+
+    // Update individual checkbox changes
+    document.addEventListener('change', (e) => {
+        if (e.target.classList.contains('product-checkbox') && e.target.closest('#products-grid')) {
+            const productCard = e.target.closest('.product-card');
+            if (productCard) {
+                productCard.classList.toggle('selected', e.target.checked);
+            }
+            this.updateGridSelectAllText();
+            this.toggleBulkActionsBar();
+        }
+    });
+}
+
+updateGridSelectAllText() {
+    const selectAllGrid = document.getElementById('select-all-grid');
+    const selectAllLabel = document.querySelector('.grid-select-all label');
+    if (!selectAllGrid || !selectAllLabel) return;
+
+    const selectedCount = document.querySelectorAll('#products-grid .product-checkbox:checked').length;
+    const totalCount = document.querySelectorAll('#products-grid .product-checkbox').length;
+
+    // Update select all checkbox state
+    selectAllGrid.checked = selectedCount === totalCount && totalCount > 0;
+    selectAllGrid.indeterminate = selectedCount > 0 && selectedCount < totalCount;
+
+    // Update label text
+    if (selectedCount > 0) {
+        selectAllLabel.textContent = `${selectedCount} selected`;
+    } else {
+        selectAllLabel.textContent = 'Select all';
+    }
 }
 
 renderProductsTableView(productsToShow = this.products) {
