@@ -1036,7 +1036,7 @@ toggleBulkActionsBar() {
 applyBulkAction() {
     const action = document.getElementById('bulk-action').value;
     const selectedProducts = Array.from(document.querySelectorAll('.product-checkbox:checked'))
-        .filter(checkbox => checkbox.closest('tr') !== null) // ADD THIS FILTER
+        .filter(checkbox => checkbox.closest('tr') !== null)
         .map(checkbox => checkbox.dataset.id);
 
     if (!action) {
@@ -1067,71 +1067,317 @@ applyBulkAction() {
         case 'delete':
             this.bulkDeleteProducts(selectedProducts);
             break;
+        case 'bulk-edit':
+            this.showBulkEditModal(selectedProducts);
+            break;
         default:
             this.showToast('Unknown bulk action: ' + action, 'error');
     }
+    
+    // Close bulk actions after completion
+    this.cancelBulkSelection();
 }
 
 // ADD THESE MISSING METHODS:
+// ===== ADVANCED BULK OPERATIONS SYSTEM =====
+
 bulkUpdateStock(productIds) {
     const newStock = prompt(`Enter new stock quantity for ${productIds.length} products:`);
-    if (newStock !== null && !isNaN(newStock)) {
-        // Update stock in UI
+    if (newStock !== null && !isNaN(newStock) && newStock >= 0) {
+        const stockValue = parseInt(newStock);
+        
+        // Update in memory
         productIds.forEach(id => {
-            const checkbox = document.querySelector(`[data-id="${id}"]`);
-            const row = checkbox.closest('tr');
-            const stockCell = row.querySelector('.product-stock');
-            if (stockCell) {
-                stockCell.textContent = newStock + ' in stock';
+            const product = this.products.find(p => p.id === id);
+            if (product) {
+                product.inventory.stock = stockValue;
+            }
+            
+            // Update inventory system
+            const inventory = JSON.parse(localStorage.getItem('swiftbuy_inventory_v1') || '{}');
+            if (inventory[id]) {
+                inventory[id].stock = stockValue;
             }
         });
-        this.showToast(`Stock updated for ${productIds.length} products`, 'success');
+        
+        // Persist changes
+        this.saveProducts();
+        localStorage.setItem('swiftbuy_inventory_v1', JSON.stringify(
+            JSON.parse(localStorage.getItem('swiftbuy_inventory_v1') || '{}')
+        ));
+        
+        // Update UI
+        this.updateProductsSection();
+        this.showToast(`Stock updated to ${stockValue} for ${productIds.length} products`, 'success');
     }
 }
 
 bulkUpdatePrice(productIds) {
     const newPrice = prompt(`Enter new price for ${productIds.length} products:`);
-    if (newPrice !== null) {
-        // Update price in UI
+    if (newPrice !== null && !isNaN(newPrice) && newPrice >= 0) {
+        const priceValue = parseFloat(newPrice);
+        
+        // Update in memory
         productIds.forEach(id => {
-            const checkbox = document.querySelector(`[data-id="${id}"]`);
-            const row = checkbox.closest('tr');
-            const priceCell = row.querySelector('.product-price');
-            if (priceCell) {
-                priceCell.textContent = '$' + newPrice;
+            const product = this.products.find(p => p.id === id);
+            if (product) {
+                product.price = priceValue;
             }
         });
-        this.showToast(`Price updated for ${productIds.length} products`, 'success');
+        
+        // Persist changes
+        this.saveProducts();
+        
+        // Update UI
+        this.updateProductsSection();
+        this.showToast(`Price updated to $${priceValue} for ${productIds.length} products`, 'success');
     }
 }
 
 bulkUpdateCategory(productIds) {
-    const newCategory = prompt(`Enter new category for ${productIds.length} products:`);
-    if (newCategory !== null) {
-        this.showToast(`Category updated for ${productIds.length} products`, 'success');
+    const categories = ['electronics', 'shoe', 'sunglasses', 'backpacks', 'clothing', 'accessories'];
+    const newCategory = prompt(`Enter new category for ${productIds.length} products. Available: ${categories.join(', ')}`);
+    
+    if (newCategory && categories.includes(newCategory.toLowerCase())) {
+        const categoryValue = newCategory.toLowerCase();
+        
+        // Update in memory
+        productIds.forEach(id => {
+            const product = this.products.find(p => p.id === id);
+            if (product) {
+                product.category = categoryValue;
+            }
+        });
+        
+        // Persist changes
+        this.saveProducts();
+        
+        // Update UI
+        this.updateProductsSection();
+        this.showToast(`Category updated to ${categoryValue} for ${productIds.length} products`, 'success');
+    } else if (newCategory) {
+        this.showToast(`Invalid category. Available: ${categories.join(', ')}`, 'error');
     }
 }
 
 bulkArchiveProducts(productIds) {
-    if (confirm(`Archive ${productIds.length} products?`)) {
+    if (confirm(`Archive ${productIds.length} products? Archived products will be hidden from the store but not deleted.`)) {
+        // Update in memory - add archive flag
         productIds.forEach(id => {
-            const checkbox = document.querySelector(`[data-id="${id}"]`);
-            const row = checkbox.closest('tr');
-            row.style.opacity = '0.5';
+            const product = this.products.find(p => p.id === id);
+            if (product) {
+                product.archived = true;
+                product.visible = false;
+            }
         });
-        this.showToast(`${productIds.length} products archived`, 'success');
+        
+        // Persist changes
+        this.saveProducts();
+        
+        // Update UI - remove archived products from view
+        this.updateProductsSection();
+        this.showToast(`${productIds.length} products archived successfully`, 'success');
     }
 }
 
 bulkDeleteProducts(productIds) {
-    if (confirm(`Permanently delete ${productIds.length} products?`)) {
-        productIds.forEach(id => {
-            const checkbox = document.querySelector(`[data-id="${id}"]`);
-            const row = checkbox.closest('tr');
-            row.remove();
-        });
-        this.showToast(`${productIds.length} products deleted`, 'success');
+    if (confirm(`🚨 PERMANENTLY DELETE ${productIds.length} PRODUCTS?\n\nThis action cannot be undone! All product data, inventory, and sales history will be lost.`)) {
+        try {
+            // Remove from products array
+            this.products = this.products.filter(product => !productIds.includes(product.id));
+            
+            // Remove from inventory
+            const inventory = JSON.parse(localStorage.getItem('swiftbuy_inventory_v1') || '{}');
+            productIds.forEach(id => {
+                delete inventory[id];
+            });
+            localStorage.setItem('swiftbuy_inventory_v1', JSON.stringify(inventory));
+            
+            // Persist changes
+            this.saveProducts();
+            
+            // Update UI
+            this.updateProductsSection();
+            this.showToast(`${productIds.length} products permanently deleted`, 'success');
+            
+        } catch (error) {
+            console.error('Bulk delete error:', error);
+            this.showToast('Error deleting products', 'error');
+        }
     }
+}
+
+// ===== ADVANCED BULK SELECTION FEATURES =====
+
+getSelectedProducts() {
+    return Array.from(document.querySelectorAll('.product-checkbox:checked'))
+        .filter(checkbox => checkbox.closest('tr') !== null) // Only table checkboxes
+        .map(checkbox => {
+            const productId = checkbox.dataset.id;
+            return this.products.find(p => p.id === productId);
+        })
+        .filter(product => product !== undefined); // Remove undefined
+}
+
+showBulkEditModal(productIds) {
+    const selectedProducts = this.getSelectedProducts();
+    if (selectedProducts.length === 0) return;
+
+    const modalHTML = `
+        <div class="modal active" id="bulk-edit-modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Bulk Edit ${selectedProducts.length} Products</h3>
+                    <button class="modal-close" id="close-bulk-edit">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Update Field</label>
+                        <select id="bulk-edit-field" class="form-input">
+                            <option value="">Select field to update</option>
+                            <option value="price">Price</option>
+                            <option value="stock">Stock Quantity</option>
+                            <option value="category">Category</option>
+                            <option value="featured">Featured Status</option>
+                            <option value="visible">Visibility</option>
+                        </select>
+                    </div>
+                    
+                    <div id="bulk-edit-value-container" style="display: none;">
+                        <div class="form-group">
+                            <label id="bulk-edit-value-label">New Value</label>
+                            <input type="text" id="bulk-edit-value" class="form-input">
+                        </div>
+                    </div>
+                    
+                    <div class="selected-products-preview">
+                        <h4>Selected Products (${selectedProducts.length}):</h4>
+                        <div class="preview-list">
+                            ${selectedProducts.slice(0, 5).map(product => `
+                                <div class="preview-item">${product.name}</div>
+                            `).join('')}
+                            ${selectedProducts.length > 5 ? `<div class="preview-more">+${selectedProducts.length - 5} more</div>` : ''}
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn-cancel" id="cancel-bulk-edit">Cancel</button>
+                    <button class="btn-primary" id="apply-bulk-edit">Apply Changes</button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Remove existing modal
+    const existingModal = document.getElementById('bulk-edit-modal');
+    if (existingModal) existingModal.remove();
+
+    // Add new modal
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    this.setupBulkEditModalEvents(productIds);
+}
+
+setupBulkEditModalEvents(productIds) {
+    const modal = document.getElementById('bulk-edit-modal');
+    const fieldSelect = document.getElementById('bulk-edit-field');
+    const valueContainer = document.getElementById('bulk-edit-value-container');
+    const valueInput = document.getElementById('bulk-edit-value');
+    const applyBtn = document.getElementById('apply-bulk-edit');
+
+    // Show/hide value input based on field selection
+    fieldSelect.addEventListener('change', (e) => {
+        if (e.target.value) {
+            valueContainer.style.display = 'block';
+            // Set appropriate label and input type
+            switch(e.target.value) {
+                case 'price':
+                    document.getElementById('bulk-edit-value-label').textContent = 'New Price ($)';
+                    valueInput.type = 'number';
+                    valueInput.step = '0.01';
+                    valueInput.min = '0';
+                    break;
+                case 'stock':
+                    document.getElementById('bulk-edit-value-label').textContent = 'New Stock Quantity';
+                    valueInput.type = 'number';
+                    valueInput.step = '1';
+                    valueInput.min = '0';
+                    break;
+                case 'category':
+                    document.getElementById('bulk-edit-value-label').textContent = 'New Category';
+                    valueInput.type = 'text';
+                    break;
+                default:
+                    valueContainer.style.display = 'none';
+            }
+        } else {
+            valueContainer.style.display = 'none';
+        }
+    });
+
+    // Apply bulk changes
+    applyBtn.addEventListener('click', () => {
+        const field = fieldSelect.value;
+        const value = valueInput.value;
+
+        if (!field) {
+            this.showToast('Please select a field to update', 'error');
+            return;
+        }
+
+        this.applyBulkFieldUpdate(productIds, field, value);
+        modal.remove();
+    });
+
+    // Close modal events
+    document.getElementById('close-bulk-edit').addEventListener('click', () => modal.remove());
+    document.getElementById('cancel-bulk-edit').addEventListener('click', () => modal.remove());
+    
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) modal.remove();
+    });
+}
+
+applyBulkFieldUpdate(productIds, field, value) {
+    const selectedProducts = this.getSelectedProducts();
+    
+    selectedProducts.forEach(product => {
+        switch(field) {
+            case 'price':
+                product.price = parseFloat(value);
+                break;
+            case 'stock':
+                product.inventory.stock = parseInt(value);
+                // Update inventory system
+                const inventory = JSON.parse(localStorage.getItem('swiftbuy_inventory_v1') || '{}');
+                if (inventory[product.id]) {
+                    inventory[product.id].stock = parseInt(value);
+                }
+                break;
+            case 'category':
+                product.category = value;
+                break;
+            case 'featured':
+                product.featured = value === 'true';
+                break;
+            case 'visible':
+                product.visible = value === 'true';
+                break;
+        }
+    });
+
+    // Persist changes
+    this.saveProducts();
+    if (field === 'stock') {
+        localStorage.setItem('swiftbuy_inventory_v1', JSON.stringify(
+            JSON.parse(localStorage.getItem('swiftbuy_inventory_v1') || '{}')
+        ));
+    }
+
+    // Update UI
+    this.updateProductsSection();
+    this.showToast(`Updated ${field} for ${selectedProducts.length} products`, 'success');
 }
 
 cancelBulkSelection() {
