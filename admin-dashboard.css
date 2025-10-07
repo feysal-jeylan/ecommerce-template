@@ -3719,3 +3719,236 @@ input[type="checkbox"] {
 .orders-table-container tr.selected td {
     border-color: rgba(37, 99, 235, 0.2);
 }
+
+/* ===== INVENTORY MANAGEMENT RESPONSIVENESS ===== */
+
+/* Enhanced table container for all screens */
+.inventory-table-container {
+    background: var(--admin-surface);
+    border-radius: var(--admin-radius);
+    box-shadow: var(--admin-shadow);
+    border: 1px solid var(--admin-border);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    position: relative;
+}
+
+/* Ensure table has minimum width but can expand */
+.inventory-table-container table {
+    width: 100%;
+    min-width: 800px; /* Minimum for desktop */
+    border-collapse: collapse;
+}
+
+/* Mobile-first responsive table */
+@media (max-width: 768px) {
+    .inventory-table-container {
+        margin: 0 -1rem;
+        border-radius: 0;
+        border-left: none;
+        border-right: none;
+        background: transparent;
+        box-shadow: none;
+    }
+    
+    .inventory-table-container table {
+        min-width: 600px; /* Reduced for mobile scrolling */
+    }
+    
+    /* Enhanced mobile table cells */
+    .inventory-table-container th,
+    .inventory-table-container td {
+        padding: 0.75rem 0.5rem;
+        font-size: 0.85rem;
+        white-space: nowrap;
+    }
+    
+    /* Priority-based column hiding */
+    .inventory-table-container th:nth-child(3), /* Category */
+    .inventory-table-container td:nth-child(3) {
+        display: none;
+    }
+    
+    /* Compact action buttons */
+    .inventory-table-container .action-buttons {
+        display: flex;
+        gap: 0.25rem;
+        flex-wrap: nowrap;
+        min-width: 80px;
+    }
+    
+    .inventory-table-container .btn-action {
+        width: 28px;
+        height: 28px;
+        font-size: 0.7rem;
+    }
+}
+
+/* Small mobile devices */
+@media (max-width: 480px) {
+    .inventory-table-container table {
+        min-width: 500px; /* Further reduced for very small screens */
+    }
+    
+    /* Hide low-priority columns */
+    .inventory-table-container th:nth-child(2), /* SKU */
+    .inventory-table-container td:nth-child(2) {
+        display: none;
+    }
+    
+    /* Enhanced product name display */
+    .inventory-table-container td:first-child {
+        max-width: 120px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    
+    /* Compact status badges */
+    .inventory-table-container .status-badge {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.7rem;
+    }
+}
+
+/* Mobile card layout alternative */
+.inventory-mobile-cards {
+    display: none;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1rem;
+}
+
+.inventory-card {
+    background: var(--admin-surface);
+    border-radius: var(--admin-radius);
+    padding: 1rem;
+    border: 1px solid var(--admin-border);
+    box-shadow: var(--admin-shadow);
+}
+
+.inventory-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+}
+
+.inventory-card-product {
+    flex: 1;
+}
+
+.inventory-card-product strong {
+    display: block;
+    color: var(--admin-text);
+    margin-bottom: 0.25rem;
+    font-size: 1rem;
+}
+
+.inventory-card-product .sku {
+    color: var(--admin-text-muted);
+    font-size: 0.8rem;
+}
+
+.inventory-card-status {
+    margin-left: 1rem;
+}
+
+.inventory-card-details {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    padding: 1rem;
+    background: var(--admin-bg);
+    border-radius: 8px;
+}
+
+.inventory-card-detail {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.inventory-card-label {
+    font-size: 0.75rem;
+    color: var(--admin-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.inventory-card-value {
+    font-weight: 600;
+    color: var(--admin-text);
+    font-size: 0.9rem;
+}
+
+.inventory-card-actions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+}
+
+/* Show mobile cards on small screens */
+@media (max-width: 768px) {
+    .inventory-table-container {
+        display: none;
+    }
+    
+    .inventory-mobile-cards {
+        display: flex;
+    }
+}
+
+/* Enhanced loading states */
+.inventory-loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 2rem;
+    color: var(--admin-text-muted);
+}
+
+.inventory-empty {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--admin-text-muted);
+}
+
+.inventory-empty i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+/* Improved scrollbar for mobile */
+.inventory-table-container::-webkit-scrollbar {
+    height: 6px;
+}
+
+.inventory-table-container::-webkit-scrollbar-track {
+    background: var(--admin-bg);
+    border-radius: 3px;
+}
+
+.inventory-table-container::-webkit-scrollbar-thumb {
+    background: var(--admin-border);
+    border-radius: 3px;
+}
+
+.inventory-table-container::-webkit-scrollbar-thumb:hover {
+    background: var(--admin-text-muted);
+}
+
+/* Touch-friendly improvements */
+@media (hover: none) and (pointer: coarse) {
+    .inventory-table-container .btn-action {
+        min-width: 44px;
+        min-height: 44px;
+    }
+    
+    .inventory-card-actions .btn-action {
+        min-width: 44px;
+        min-height: 44px;
+    }
+}

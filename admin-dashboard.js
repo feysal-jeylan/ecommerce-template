@@ -2978,6 +2978,12 @@ switchSection(sectionId) {
 
 // ===== SECTION-SPECIFIC METHODS =====
 updateInventorySection() {
+    this.renderInventoryTableView();
+    this.renderInventoryMobileCards();
+    this.setupInventoryEventListeners();
+}
+
+renderInventoryTableView() {
     const container = document.getElementById('inventory-table');
     if (!container) return;
 
@@ -2986,8 +2992,12 @@ updateInventorySection() {
     // Get real-time inventory data
     const inventory = JSON.parse(localStorage.getItem('swiftbuy_inventory_v1') || '{}');
     
+    if (this.products.length === 0) {
+        this.showInventoryEmptyState();
+        return;
+    }
+
     tbody.innerHTML = this.products.map(product => {
-        // Get real-time stock for this product
         const productInventory = inventory[product.id];
         const realTimeStock = productInventory ? productInventory.stock : product.inventory.stock;
         const lowStockThreshold = productInventory ? productInventory.lowStockThreshold : product.inventory.lowStockThreshold;
@@ -3000,13 +3010,24 @@ updateInventorySection() {
         return `
         <tr>
             <td>
-                <strong>${product.name}</strong>
+                <div class="product-info-cell">
+                    <img src="${product.image}" alt="${product.name}" class="table-product-image" 
+                         onerror="this.src='https://via.placeholder.com/40x40?text=P'">
+                    <div class="table-product-details">
+                        <span class="table-product-name">${product.name}</span>
+                        <span class="table-product-sku">${product.id}</span>
+                    </div>
+                </div>
             </td>
-            <td>${product.id}</td>
-            <td>${product.category}</td>
+            <td>
+                <span class="text-muted">${product.id}</span>
+            </td>
+            <td>
+                <span class="text-capitalize">${product.category}</span>
+            </td>
             <td>
                 <span class="${realTimeStock <= lowStockThreshold ? 'text-warning' : 'text-success'}">
-                    ${realTimeStock}
+                    <strong>${realTimeStock}</strong>
                 </span>
             </td>
             <td>${lowStockThreshold}</td>
@@ -3017,10 +3038,10 @@ updateInventorySection() {
             </td>
             <td>
                 <div class="action-buttons">
-                    <button class="btn-action restock-item" data-id="${product.id}">
+                    <button class="btn-action restock-item" data-id="${product.id}" title="Restock">
                         <i class="fas fa-boxes"></i>
                     </button>
-                    <button class="btn-action edit-item" data-id="${product.id}">
+                    <button class="btn-action edit-item" data-id="${product.id}" title="Edit">
                         <i class="fas fa-edit"></i>
                     </button>
                 </div>
@@ -3028,6 +3049,115 @@ updateInventorySection() {
         </tr>
         `;
     }).join('');
+}
+
+renderInventoryMobileCards() {
+    const container = document.getElementById('inventory-mobile-cards');
+    if (!container) return;
+
+    // Get real-time inventory data
+    const inventory = JSON.parse(localStorage.getItem('swiftbuy_inventory_v1') || '{}');
+    
+    if (this.products.length === 0) {
+        return;
+    }
+
+    container.innerHTML = this.products.map(product => {
+        const productInventory = inventory[product.id];
+        const realTimeStock = productInventory ? productInventory.stock : product.inventory.stock;
+        const lowStockThreshold = productInventory ? productInventory.lowStockThreshold : product.inventory.lowStockThreshold;
+        
+        const status = realTimeStock === 0 ? 'out-of-stock' : 
+                      realTimeStock <= lowStockThreshold ? 'low-stock' : 'in-stock';
+        const statusText = realTimeStock === 0 ? 'Out of Stock' : 
+                          realTimeStock <= lowStockThreshold ? 'Low Stock' : 'In Stock';
+
+        return `
+        <div class="inventory-card" data-id="${product.id}">
+            <div class="inventory-card-header">
+                <div class="inventory-card-product">
+                    <strong>${product.name}</strong>
+                    <span class="sku">SKU: ${product.id}</span>
+                    <span class="text-capitalize text-muted">${product.category}</span>
+                </div>
+                <div class="inventory-card-status">
+                    <span class="status-badge ${status}">${statusText}</span>
+                </div>
+            </div>
+            
+            <div class="inventory-card-details">
+                <div class="inventory-card-detail">
+                    <span class="inventory-card-label">Current Stock</span>
+                    <span class="inventory-card-value ${realTimeStock <= lowStockThreshold ? 'text-warning' : 'text-success'}">
+                        ${realTimeStock}
+                    </span>
+                </div>
+                <div class="inventory-card-detail">
+                    <span class="inventory-card-label">Threshold</span>
+                    <span class="inventory-card-value">${lowStockThreshold}</span>
+                </div>
+            </div>
+            
+            <div class="inventory-card-actions">
+                <button class="btn-action restock-item" data-id="${product.id}" title="Restock">
+                    <i class="fas fa-boxes"></i>
+                </button>
+                <button class="btn-action edit-item" data-id="${product.id}" title="Edit">
+                    <i class="fas fa-edit"></i>
+                </button>
+            </div>
+        </div>
+        `;
+    }).join('');
+}
+
+setupInventoryEventListeners() {
+    // Refresh inventory button
+    const refreshBtn = document.getElementById('refresh-inventory');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', () => {
+            this.updateInventorySection();
+            this.showToast('Inventory refreshed');
+        });
+    }
+
+    // Restock and edit buttons (works for both table and cards)
+    document.addEventListener('click', (e) => {
+        if (e.target.closest('.restock-item')) {
+            const productId = e.target.closest('.restock-item').dataset.id;
+            this.restockInventoryItem(productId);
+        } else if (e.target.closest('.edit-item')) {
+            const productId = e.target.closest('.edit-item').dataset.id;
+            this.editInventoryItem(productId);
+        }
+    });
+}
+
+showInventoryEmptyState() {
+    const tableBody = document.getElementById('inventory-table')?.querySelector('tbody');
+    const mobileCards = document.getElementById('inventory-mobile-cards');
+    const emptyState = document.getElementById('inventory-empty');
+    
+    if (tableBody) tableBody.innerHTML = '';
+    if (mobileCards) mobileCards.innerHTML = '';
+    if (emptyState) emptyState.style.display = 'block';
+}
+
+restockInventoryItem(productId) {
+    const product = this.products.find(p => p.id === productId);
+    if (product) {
+        this.showToast(`Restocking ${product.name}...`);
+        // Implement restock logic here
+        console.log('Restocking product:', productId);
+    }
+}
+
+editInventoryItem(productId) {
+    const product = this.products.find(p => p.id === productId);
+    if (product) {
+        this.openQuickEditModal(productId);
+        this.showToast(`Editing ${product.name}`);
+    }
 }
 
 updateCustomersSection() {

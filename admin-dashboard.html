@@ -629,7 +629,7 @@
 </div>
 </section>
 
-           <!-- Inventory Section -->
+<!-- Inventory Section -->
 <section id="inventory" class="content-section">
     <div class="section-header">
         <h2>Inventory Management</h2>
@@ -640,6 +640,8 @@
             </button>
         </div>
     </div>
+
+    <!-- Desktop Table View -->
     <div class="inventory-table-container">
         <table class="orders-table" id="inventory-table">
             <thead>
@@ -657,6 +659,24 @@
                 <!-- Inventory data populated by JS -->
             </tbody>
         </table>
+    </div>
+
+    <!-- Mobile Card View -->
+    <div class="inventory-mobile-cards" id="inventory-mobile-cards">
+        <!-- Mobile cards populated by JS -->
+    </div>
+
+    <!-- Loading State -->
+    <div class="inventory-loading" id="inventory-loading" style="display: none;">
+        <i class="fas fa-spinner fa-spin"></i>
+        <span style="margin-left: 0.5rem;">Loading inventory...</span>
+    </div>
+
+    <!-- Empty State -->
+    <div class="inventory-empty" id="inventory-empty" style="display: none;">
+        <i class="fas fa-boxes"></i>
+        <h3>No Inventory Items</h3>
+        <p>Your inventory will appear here once you add products.</p>
     </div>
 </section>
 
