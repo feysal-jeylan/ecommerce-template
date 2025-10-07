@@ -3,6 +3,24 @@
 
 class AdminDashboard {
 
+    // Test modal functionality
+testModalFunctionality() {
+    console.log('🧪 Testing modal functionality...');
+    
+    // Test customer profile modal
+    if (this.customers.length > 0) {
+        const testCustomer = this.customers[0];
+        this.viewCustomerProfile(testCustomer.email);
+        console.log('✅ Customer profile modal opened');
+        
+        // Test close functionality after 2 seconds
+        setTimeout(() => {
+            document.getElementById('customer-profile-modal').classList.remove('active');
+            console.log('✅ Customer profile modal closed');
+        }, 2000);
+    }
+}
+
     // ===== DEBUG HELPER METHODS =====
 
 debugBulkActions() {
@@ -272,14 +290,31 @@ getStorageUsage() {
 }
 
 init() {
+    console.log('🚀 Initializing Admin Dashboard...');
+    
     this.loadAllData();
     this.setupEventListeners();
     this.setupRealTimeUpdates();
     this.updateDashboard();
     this.setupAddProductModal();
-    this.setupQuickEditModal(); // ← MAKE SURE THIS LINE EXISTS
-    this.setupEnhancedActionButtons();
-    console.log('🚀 Enterprise Admin Dashboard Ready');
+    this.setupQuickEditModal();
+    
+    // Setup enhanced action buttons with error handling
+    if (typeof this.setupEnhancedActionButtons === 'function') {
+        this.setupEnhancedActionButtons();
+    } else {
+        console.warn('⚠️ setupEnhancedActionButtons method not found, using fallback');
+        this.setupCustomerActionModals(); // Fallback to just customer actions
+    }
+    
+    // Setup customer action modals
+    if (typeof this.setupCustomerActionModals === 'function') {
+        this.setupCustomerActionModals();
+    } else {
+        console.error('❌ setupCustomerActionModals method not found');
+    }
+    
+    console.log('✅ Enterprise Admin Dashboard Ready');
 }
     // ===== DATA MANAGEMENT =====
     loadAllData() {
