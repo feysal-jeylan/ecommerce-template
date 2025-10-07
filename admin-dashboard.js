@@ -1653,33 +1653,6 @@ loadProductSalesData() {
     console.log('📊 Loading product sales data...');
 }
 
-// Bulk action implementations (simplified for now)
-bulkUpdateStock(productIds) {
-    this.showToast(`Updating stock for ${productIds.length} products...`);
-    console.log('Bulk update stock:', productIds);
-}
-
-bulkUpdatePrice(productIds) {
-    this.showToast(`Updating prices for ${productIds.length} products...`);
-    console.log('Bulk update price:', productIds);
-}
-
-bulkUpdateCategory(productIds) {
-    this.showToast(`Updating categories for ${productIds.length} products...`);
-    console.log('Bulk update category:', productIds);
-}
-
-bulkArchiveProducts(productIds) {
-    this.showToast(`Archiving ${productIds.length} products...`);
-    console.log('Bulk archive:', productIds);
-}
-
-bulkDeleteProducts(productIds) {
-    if (confirm(`Are you sure you want to delete ${productIds.length} products? This action cannot be undone.`)) {
-        this.showToast(`Deleting ${productIds.length} products...`);
-        console.log('Bulk delete:', productIds);
-    }
-}
 
 viewProductDetails(productId) {
     const product = this.products.find(p => p.id === productId);
