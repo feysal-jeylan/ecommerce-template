@@ -271,12 +271,14 @@ getStorageUsage() {
     this.init();
 }
 
-  init() {
+init() {
     this.loadAllData();
     this.setupEventListeners();
     this.setupRealTimeUpdates();
     this.updateDashboard();
-    this.setupAddProductModal(); // ADD THIS LINE
+    this.setupAddProductModal();
+    this.setupQuickEditModal(); // ← MAKE SURE THIS LINE EXISTS
+    this.setupEnhancedActionButtons();
     console.log('🚀 Enterprise Admin Dashboard Ready');
 }
     // ===== DATA MANAGEMENT =====
@@ -2170,6 +2172,8 @@ setupQuickEditModal() {
             closeModal();
         }
     });
+    
+    console.log('✅ Quick edit modal setup completed');
 }
 
 openQuickEditModal(productId) {
@@ -2277,7 +2281,7 @@ saveQuickEdit() {
         lowStockThreshold: parseInt(document.getElementById('edit-product-threshold').value)
     };
 
-    console.log('🔄 QUICK EDIT DEBUG:', { productId, updates });
+    console.log('🔄 QUICK EDIT SAVE:', { productId, updates });
 
     // Update product data
     const productIndex = this.products.findIndex(p => p.id === productId);
@@ -2306,16 +2310,23 @@ saveQuickEdit() {
         console.log('📊 Inventory updated:', inventory[productId]);
     }
 
-    // SAVE PRODUCTS TO LOCALSTORAGE - THIS IS PROBABLY MISSING!
+    // SAVE PRODUCTS TO LOCALSTORAGE
     this.saveProducts();
     
     console.log('💾 Products saved to localStorage');
 
-    this.showToast('Product updated successfully!');
+    // CLOSE MODAL
     document.getElementById('quick-edit-modal').classList.remove('active');
     
-    // Refresh views
-    this.updateProductsSection();
+    // REFRESH INVENTORY SECTION - THIS IS THE KEY FIX!
+    this.updateInventorySection();
+    
+    // ALSO REFRESH PRODUCTS SECTION IF WE'RE ON THAT TAB
+    if (this.currentSection === 'products') {
+        this.updateProductsSection();
+    }
+    
+    this.showToast('Product updated successfully!');
     
     // VERIFY THE SAVE WORKED
     setTimeout(() => {
