@@ -3455,8 +3455,156 @@ restockInventoryItem(productId) {
 
 updateCustomersSection() {
     this.updateCustomerStats();
-    this.renderCustomersTable();
+    this.renderCustomersTableView();
+    this.renderCustomersMobileCards();
     this.setupCustomerEventListeners();
+}
+
+renderCustomersTableView(customersToShow = this.customers) {
+    const container = document.getElementById('customers-table');
+    if (!container) return;
+
+    const tbody = container.querySelector('tbody');
+    
+    if (customersToShow.length === 0) {
+        this.showCustomersEmptyState();
+        return;
+    }
+
+    tbody.innerHTML = customersToShow.map(customer => {
+        const tier = customer.totalSpent > 500 ? 'vip' : customer.totalSpent > 200 ? 'premium' : 'standard';
+        const tierText = customer.totalSpent > 500 ? 'VIP' : customer.totalSpent > 200 ? 'Premium' : 'Standard';
+        const initials = customer.name.split(' ').map(n => n[0]).join('').toUpperCase();
+        const lastActive = new Date(customer.lastOrder) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) ? 'active' : 'inactive';
+        
+        return `
+        <tr>
+            <td>
+                <input type="checkbox" class="customer-checkbox" data-email="${customer.email}">
+            </td>
+            <td>
+                <div class="customer-info">
+                    <div class="customer-avatar">${initials}</div>
+                    <div class="customer-details">
+                        <span class="customer-name">${customer.name}</span>
+                        <span class="customer-tier tier-${tier}">${tierText}</span>
+                    </div>
+                </div>
+            </td>
+            <td>
+                <div class="customer-details">
+                    <span class="customer-email">${customer.email}</span>
+                    <span class="customer-phone">${customer.phone || 'No phone'}</span>
+                </div>
+            </td>
+            <td>
+                <strong>${customer.orders}</strong>
+                <div class="text-muted">orders</div>
+            </td>
+            <td>
+                <strong>$${customer.totalSpent.toFixed(2)}</strong>
+                <div class="text-muted">total</div>
+            </td>
+            <td>
+                <span class="status-${lastActive}">
+                    <i class="fas fa-circle"></i>
+                    ${lastActive === 'active' ? 'Active' : 'Inactive'}
+                </span>
+            </td>
+            <td>${this.formatTimeAgo(customer.lastOrder)}</td>
+            <td>
+                <div class="customer-actions">
+                    <button class="btn-customer-action btn-view" data-email="${customer.email}" title="View Profile">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn-customer-action btn-email" data-email="${customer.email}" title="Send Email">
+                        <i class="fas fa-envelope"></i>
+                    </button>
+                    <button class="btn-customer-action btn-edit" data-email="${customer.email}" title="Edit Customer">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                </div>
+            </td>
+        </tr>
+        `;
+    }).join('');
+}
+
+renderCustomersMobileCards(customersToShow = this.customers) {
+    const container = document.getElementById('customers-mobile-cards');
+    if (!container) return;
+
+    if (customersToShow.length === 0) {
+        return;
+    }
+
+    container.innerHTML = customersToShow.map(customer => {
+        const tier = customer.totalSpent > 500 ? 'vip' : customer.totalSpent > 200 ? 'premium' : 'standard';
+        const tierText = customer.totalSpent > 500 ? 'VIP' : customer.totalSpent > 200 ? 'Premium' : 'Standard';
+        const initials = customer.name.split(' ').map(n => n[0]).join('').toUpperCase();
+        const lastActive = new Date(customer.lastOrder) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) ? 'active' : 'inactive';
+        const statusIcon = lastActive === 'active' ? 'fa-circle text-success' : 'fa-circle text-muted';
+
+        return `
+        <div class="customer-card" data-email="${customer.email}">
+            <div class="customer-card-header">
+                <div class="customer-card-info">
+                    <div class="customer-card-name">
+                        ${customer.name}
+                        <span class="customer-tier tier-${tier}">${tierText}</span>
+                    </div>
+                    <div class="customer-card-email">${customer.email}</div>
+                    <div class="customer-card-contact">
+                        <span><i class="fas fa-phone"></i> ${customer.phone || 'No phone'}</span>
+                        <span><i class="fas ${statusIcon}"></i> ${lastActive === 'active' ? 'Active' : 'Inactive'}</span>
+                    </div>
+                </div>
+                <div class="customer-avatar">${initials}</div>
+            </div>
+            
+            <div class="customer-card-stats">
+                <div class="customer-card-stat">
+                    <span class="customer-card-stat-label">Total Orders</span>
+                    <span class="customer-card-stat-value">${customer.orders}</span>
+                </div>
+                <div class="customer-card-stat">
+                    <span class="customer-card-stat-label">Total Spent</span>
+                    <span class="customer-card-stat-value">$${customer.totalSpent.toFixed(2)}</span>
+                </div>
+                <div class="customer-card-stat">
+                    <span class="customer-card-stat-label">Avg Order</span>
+                    <span class="customer-card-stat-value">$${customer.averageOrderValue.toFixed(2)}</span>
+                </div>
+                <div class="customer-card-stat">
+                    <span class="customer-card-stat-label">Last Active</span>
+                    <span class="customer-card-stat-value">${this.formatTimeAgo(customer.lastOrder)}</span>
+                </div>
+            </div>
+            
+            <div class="customer-card-actions">
+                <button class="btn-customer-action btn-view" data-email="${customer.email}" title="View Profile">
+                    <i class="fas fa-eye"></i>
+                </button>
+                <button class="btn-customer-action btn-email" data-email="${customer.email}" title="Send Email">
+                    <i class="fas fa-envelope"></i>
+                </button>
+                <button class="btn-customer-action btn-edit" data-email="${customer.email}" title="Edit Customer">
+                    <i class="fas fa-edit"></i>
+                </button>
+            </div>
+        </div>
+        `;
+    }).join('');
+}
+
+showCustomersEmptyState() {
+    const tableBody = document.getElementById('customers-table')?.querySelector('tbody');
+    const mobileCards = document.getElementById('customers-mobile-cards');
+    const emptyState = document.getElementById('customers-empty');
+    
+    if (tableBody) tableBody.innerHTML = '';
+    if (mobileCards) mobileCards.innerHTML = '';
+    if (emptyState) emptyState.style.display = 'block';
 }
 
 updateCustomerStats() {

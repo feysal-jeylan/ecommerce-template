@@ -4098,3 +4098,323 @@ body .admin-container .admin-main .admin-content {
     z-index: 10000 !important;
 }
 
+/* ===== CUSTOMER MANAGEMENT RESPONSIVENESS ===== */
+
+/* Enhanced table container */
+.customers-table-container {
+    background: var(--admin-surface);
+    border-radius: var(--admin-radius);
+    box-shadow: var(--admin-shadow);
+    border: 1px solid var(--admin-border);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    position: relative;
+}
+
+/* Ensure table has minimum width but can expand */
+.customers-table-container table {
+    width: 100%;
+    min-width: 900px; /* Minimum for desktop */
+    border-collapse: collapse;
+}
+
+/* Mobile-first responsive table */
+@media (max-width: 768px) {
+    .customers-table-container {
+        margin: 0 -1rem;
+        border-radius: 0;
+        border-left: none;
+        border-right: none;
+        background: transparent;
+        box-shadow: none;
+    }
+    
+    .customers-table-container table {
+        min-width: 700px; /* Reduced for mobile scrolling */
+    }
+    
+    /* Enhanced mobile table cells */
+    .customers-table-container th,
+    .customers-table-container td {
+        padding: 0.75rem 0.5rem;
+        font-size: 0.85rem;
+    }
+    
+    /* Priority-based column hiding */
+    .customers-table-container th:nth-child(4), /* Orders */
+    .customers-table-container td:nth-child(4),
+    .customers-table-container th:nth-child(7), /* Last Active */
+    .customers-table-container td:nth-child(7) {
+        display: none;
+    }
+    
+    /* Compact customer info */
+    .customer-info {
+        min-width: 150px;
+    }
+    
+    .customer-name {
+        font-size: 0.9rem;
+    }
+    
+    .customer-email {
+        font-size: 0.8rem;
+        max-width: 120px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    
+    /* Compact action buttons */
+    .customers-table-container .customer-actions {
+        display: flex;
+        gap: 0.25rem;
+        flex-wrap: nowrap;
+        min-width: 80px;
+    }
+    
+    .customers-table-container .btn-customer-action {
+        width: 28px;
+        height: 28px;
+        font-size: 0.7rem;
+    }
+}
+
+/* Small mobile devices */
+@media (max-width: 480px) {
+    .customers-table-container table {
+        min-width: 600px; /* Further reduced for very small screens */
+    }
+    
+    /* Hide more columns on very small screens */
+    .customers-table-container th:nth-child(3), /* Contact */
+    .customers-table-container td:nth-child(3),
+    .customers-table-container th:nth-child(5), /* Total Spent */
+    .customers-table-container td:nth-child(5) {
+        display: none;
+    }
+    
+    /* Enhanced customer display */
+    .customer-avatar {
+        width: 32px;
+        height: 32px;
+        font-size: 0.8rem;
+    }
+    
+    .customer-tier {
+        font-size: 0.65rem;
+        padding: 0.2rem 0.5rem;
+    }
+}
+
+/* Mobile card layout alternative */
+.customers-mobile-cards {
+    display: none;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1rem;
+}
+
+.customer-card {
+    background: var(--admin-surface);
+    border-radius: var(--admin-radius);
+    padding: 1.25rem;
+    border: 1px solid var(--admin-border);
+    box-shadow: var(--admin-shadow);
+    transition: all 0.2s ease;
+}
+
+.customer-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.customer-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+}
+
+.customer-card-info {
+    flex: 1;
+}
+
+.customer-card-name {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--admin-text);
+    margin-bottom: 0.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.customer-card-email {
+    color: var(--admin-text-muted);
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+    word-break: break-all;
+}
+
+.customer-card-contact {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.8rem;
+    color: var(--admin-text-muted);
+}
+
+.customer-card-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: var(--admin-bg);
+    border-radius: 8px;
+}
+
+.customer-card-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.customer-card-stat-label {
+    font-size: 0.75rem;
+    color: var(--admin-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.customer-card-stat-value {
+    font-weight: 600;
+    color: var(--admin-text);
+    font-size: 0.95rem;
+}
+
+.customer-card-actions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+    border-top: 1px solid var(--admin-border);
+    padding-top: 1rem;
+}
+
+/* Show mobile cards on small screens */
+@media (max-width: 768px) {
+    .customers-table-container {
+        display: none;
+    }
+    
+    .customers-mobile-cards {
+        display: flex;
+    }
+}
+
+/* Enhanced customer stats grid responsiveness */
+.customer-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+@media (max-width: 480px) {
+    .customer-stats-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+}
+
+/* Search and filter responsiveness */
+@media (max-width: 768px) {
+    .section-actions {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .search-box {
+        min-width: 100%;
+        order: -1;
+    }
+}
+
+/* Enhanced loading and empty states */
+.customers-loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 3rem;
+    color: var(--admin-text-muted);
+}
+
+.customers-empty {
+    text-align: center;
+    padding: 4rem 1rem;
+    color: var(--admin-text-muted);
+}
+
+.customers-empty i {
+    font-size: 4rem;
+    margin-bottom: 1.5rem;
+    opacity: 0.5;
+}
+
+.customers-empty h3 {
+    margin-bottom: 0.5rem;
+    color: var(--admin-text);
+}
+
+/* Improved scrollbar for mobile */
+.customers-table-container::-webkit-scrollbar {
+    height: 6px;
+}
+
+.customers-table-container::-webkit-scrollbar-track {
+    background: var(--admin-bg);
+    border-radius: 3px;
+}
+
+.customers-table-container::-webkit-scrollbar-thumb {
+    background: var(--admin-border);
+    border-radius: 3px;
+}
+
+.customers-table-container::-webkit-scrollbar-thumb:hover {
+    background: var(--admin-text-muted);
+}
+
+/* Touch-friendly improvements */
+@media (hover: none) and (pointer: coarse) {
+    .customers-table-container .btn-customer-action {
+        min-width: 44px;
+        min-height: 44px;
+    }
+    
+    .customer-card-actions .btn-customer-action {
+        min-width: 44px;
+        min-height: 44px;
+    }
+    
+    .customer-card {
+        padding: 1rem;
+    }
+}
+
+/* Status indicator improvements */
+.status-active,
+.status-inactive {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+}
+
+.status-active i {
+    color: var(--admin-success);
+}
+
+.status-inactive i {
+    color: var(--admin-text-muted);
+}

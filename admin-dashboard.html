@@ -689,12 +689,12 @@
         </div>
     </div>
 
-    <!-- Customers Table -->
+    <!-- Desktop Table View -->
     <div class="customers-table-container">
         <table class="orders-table" id="customers-table">
             <thead>
                 <tr>
-                    <th>
+                    <th width="50">
                         <input type="checkbox" id="select-all-customers">
                     </th>
                     <th>Customer</th>
@@ -710,6 +710,24 @@
                 <!-- Customers data populated by JS -->
             </tbody>
         </table>
+    </div>
+
+    <!-- Mobile Card View -->
+    <div class="customers-mobile-cards" id="customers-mobile-cards">
+        <!-- Mobile cards populated by JS -->
+    </div>
+
+    <!-- Loading State -->
+    <div class="customers-loading" id="customers-loading" style="display: none;">
+        <i class="fas fa-spinner fa-spin"></i>
+        <span style="margin-left: 0.5rem;">Loading customers...</span>
+    </div>
+
+    <!-- Empty State -->
+    <div class="customers-empty" id="customers-empty" style="display: none;">
+        <i class="fas fa-users"></i>
+        <h3>No Customers Found</h3>
+        <p>Customer data will appear here once you have orders.</p>
     </div>
 
     <!-- Pagination -->
