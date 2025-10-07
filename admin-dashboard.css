@@ -4418,3 +4418,204 @@ body .admin-container .admin-main .admin-content {
 .status-inactive i {
     color: var(--admin-text-muted);
 }
+
+
+/* ===== CUSTOMER ACTION MODALS ===== */
+
+/* Customer Profile Styles */
+.customer-profile-header {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--admin-border);
+}
+
+.customer-profile-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--admin-primary), var(--admin-secondary));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 2rem;
+    font-weight: bold;
+}
+
+.customer-profile-info {
+    flex: 1;
+}
+
+.customer-profile-name {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--admin-text);
+    margin-bottom: 0.5rem;
+}
+
+.customer-profile-email {
+    color: var(--admin-text-muted);
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.customer-profile-tier {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.tier-standard { background: #f1f5f9; color: #64748b; }
+.tier-premium { background: #f3e8ff; color: #7c3aed; }
+.tier-vip { background: #fef3c7; color: #d97706; }
+
+.customer-profile-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.customer-profile-stat {
+    text-align: center;
+    padding: 1.5rem;
+    background: var(--admin-bg);
+    border-radius: 12px;
+    border: 1px solid var(--admin-border);
+}
+
+.customer-profile-stat-value {
+    display: block;
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--admin-primary);
+    margin-bottom: 0.5rem;
+}
+
+.customer-profile-stat-label {
+    font-size: 0.8rem;
+    color: var(--admin-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.customer-orders-section {
+    margin-top: 2rem;
+}
+
+.customer-orders-section h4 {
+    margin-bottom: 1rem;
+    color: var(--admin-text);
+}
+
+.customer-orders-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.customer-order-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    border: 1px solid var(--admin-border);
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+    transition: all 0.2s ease;
+}
+
+.customer-order-item:hover {
+    background: var(--admin-bg);
+    border-color: var(--admin-primary);
+}
+
+.customer-order-info {
+    flex: 1;
+}
+
+.customer-order-id {
+    font-weight: 600;
+    color: var(--admin-text);
+    margin-bottom: 0.25rem;
+}
+
+.customer-order-date {
+    font-size: 0.8rem;
+    color: var(--admin-text-muted);
+}
+
+.customer-order-amount {
+    font-weight: 700;
+    color: var(--admin-primary);
+}
+
+/* Email Modal Styles */
+.email-preview {
+    background: var(--admin-bg);
+    padding: 1rem;
+    border-radius: 8px;
+    border: 1px solid var(--admin-border);
+    margin-top: 1rem;
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.email-template-option {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.email-template-option:hover {
+    background: var(--admin-bg);
+}
+
+/* Responsive customer profile */
+@media (max-width: 768px) {
+    .customer-profile-header {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .customer-profile-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .customer-profile-stat-value {
+        font-size: 1.5rem;
+    }
+}
+
+/* Enhanced action button states */
+.btn-customer-action.loading {
+    color: transparent !important;
+    pointer-events: none;
+}
+
+.btn-customer-action.loading::after {
+    content: '';
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    border: 2px solid transparent;
+    border-top: 2px solid currentColor;
+    border-radius: 50%;
+    animation: buttonSpin 0.8s linear infinite;
+}
+
+.btn-customer-action.success {
+    background: var(--admin-success) !important;
+    color: white !important;
+    border-color: var(--admin-success) !important;
+    animation: buttonSuccess 0.3s ease;
+}

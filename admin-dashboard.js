@@ -3734,30 +3734,325 @@ setupCustomerEventListeners() {
     }
 }
 
+// Enhanced customer action handlers
 viewCustomerProfile(email) {
+    console.log('👤 View customer profile:', email);
+    
     const customer = this.customers.find(c => c.email === email);
-    if (customer) {
-        this.showToast(`Opening ${customer.name}'s profile...`);
-        // Advanced: Open customer detail modal
-        console.log('View customer profile:', customer);
+    if (!customer) {
+        this.showToast('Customer not found', 'error');
+        return;
     }
+
+    // Get customer's orders
+    const customerOrders = this.orders.filter(order => order.shipping.email === email);
+    const totalRevenue = customerOrders.reduce((sum, order) => sum + order.order.total, 0);
+    const initials = customer.name.split(' ').map(n => n[0]).join('').toUpperCase();
+    const tier = customer.totalSpent > 500 ? 'vip' : customer.totalSpent > 200 ? 'premium' : 'standard';
+    const tierText = customer.totalSpent > 500 ? 'VIP' : customer.totalSpent > 200 ? 'Premium' : 'Standard';
+
+    const profileHTML = `
+        <div class="customer-profile-header">
+            <div class="customer-profile-avatar">${initials}</div>
+            <div class="customer-profile-info">
+                <h2 class="customer-profile-name">${customer.name}</h2>
+                <div class="customer-profile-email">${customer.email}</div>
+                <div class="customer-profile-tier tier-${tier}">${tierText} Customer</div>
+            </div>
+        </div>
+
+        <div class="customer-profile-stats">
+            <div class="customer-profile-stat">
+                <span class="customer-profile-stat-value">${customer.orders}</span>
+                <span class="customer-profile-stat-label">Total Orders</span>
+            </div>
+            <div class="customer-profile-stat">
+                <span class="customer-profile-stat-value">$${customer.totalSpent.toFixed(2)}</span>
+                <span class="customer-profile-stat-label">Total Spent</span>
+            </div>
+            <div class="customer-profile-stat">
+                <span class="customer-profile-stat-value">$${customer.averageOrderValue.toFixed(2)}</span>
+                <span class="customer-profile-stat-label">Avg Order Value</span>
+            </div>
+            <div class="customer-profile-stat">
+                <span class="customer-profile-stat-value">${this.formatTimeAgo(customer.lastOrder)}</span>
+                <span class="customer-profile-stat-label">Last Active</span>
+            </div>
+        </div>
+
+        <div class="customer-contact-info">
+            <h4>Contact Information</h4>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Phone</label>
+                    <input type="text" class="form-input" value="${customer.phone || 'Not provided'}" readonly>
+                </div>
+                <div class="form-group">
+                    <label>First Order</label>
+                    <input type="text" class="form-input" value="${this.formatDate(customer.firstOrder)}" readonly>
+                </div>
+            </div>
+        </div>
+
+        ${customerOrders.length > 0 ? `
+        <div class="customer-orders-section">
+            <h4>Recent Orders (${customerOrders.length})</h4>
+            <div class="customer-orders-list">
+                ${customerOrders.slice(0, 5).map(order => `
+                    <div class="customer-order-item">
+                        <div class="customer-order-info">
+                            <div class="customer-order-id">Order #${order.order.orderId}</div>
+                            <div class="customer-order-date">${this.formatDate(order.order.timestamp)} • ${order.order.items.length} items</div>
+                        </div>
+                        <div class="customer-order-amount">$${order.order.total.toFixed(2)}</div>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+        ` : '<p class="text-muted">No orders found for this customer.</p>'}
+    `;
+
+    // Populate and show modal
+    document.getElementById('customer-profile-content').innerHTML = profileHTML;
+    document.getElementById('customer-profile-modal').classList.add('active');
+    document.getElementById('customer-profile-modal').dataset.customerEmail = email;
+
+    this.showToast(`Viewing ${customer.name}'s profile`);
 }
 
 sendCustomerEmail(email) {
+    console.log('📧 Send email to:', email);
+    
     const customer = this.customers.find(c => c.email === email);
-    if (customer) {
-        this.showToast(`Preparing email to ${customer.name}...`);
-        // Advanced: Open email composer
-        console.log('Send email to:', customer);
+    if (!customer) {
+        this.showToast('Customer not found', 'error');
+        return;
     }
+
+    // Populate email form
+    document.getElementById('email-to').value = email;
+    document.getElementById('email-subject').value = '';
+    document.getElementById('email-message').value = '';
+    document.getElementById('email-template').value = '';
+
+    // Show email modal
+    document.getElementById('email-customer-modal').classList.add('active');
+    document.getElementById('email-customer-modal').dataset.customerEmail = email;
+
+    // Focus on subject field
+    setTimeout(() => {
+        document.getElementById('email-subject').focus();
+    }, 100);
+
+    this.showToast(`Preparing email to ${customer.name}`);
 }
 
 editCustomer(email) {
+    console.log('✏️ Edit customer:', email);
+    
     const customer = this.customers.find(c => c.email === email);
-    if (customer) {
-        this.showToast(`Editing ${customer.name}...`);
-        // Advanced: Open customer editor
-        console.log('Edit customer:', customer);
+    if (!customer) {
+        this.showToast('Customer not found', 'error');
+        return;
+    }
+
+    // Populate edit form
+    document.getElementById('edit-customer-name').value = customer.name;
+    document.getElementById('edit-customer-email').value = customer.email;
+    document.getElementById('edit-customer-phone').value = customer.phone || '';
+    
+    const tier = customer.totalSpent > 500 ? 'vip' : customer.totalSpent > 200 ? 'premium' : 'standard';
+    document.getElementById('edit-customer-tier').value = tier;
+    document.getElementById('edit-customer-notes').value = customer.notes || '';
+
+    // Show edit modal
+    document.getElementById('edit-customer-modal').classList.add('active');
+    document.getElementById('edit-customer-modal').dataset.customerEmail = email;
+
+    this.showToast(`Editing ${customer.name}'s details`);
+}
+
+// Fixed customer action modals setup
+setupCustomerActionModals() {
+    console.log('🔧 Setting up customer action modals...');
+    
+    // Customer Profile Modal
+    this.setupModalEventListeners('customer-profile-modal', [
+        'close-customer-profile',
+        'close-customer-profile-btn'
+    ]);
+    
+    // Email Modal
+    this.setupModalEventListeners('email-customer-modal', [
+        'close-email-modal',
+        'cancel-email'
+    ]);
+    
+    // Edit Customer Modal
+    this.setupModalEventListeners('edit-customer-modal', [
+        'close-edit-customer',
+        'cancel-edit-customer'
+    ]);
+
+    // Email from profile button
+    const emailFromProfileBtn = document.getElementById('email-customer-from-profile');
+    if (emailFromProfileBtn) {
+        emailFromProfileBtn.addEventListener('click', () => {
+            const email = document.getElementById('customer-profile-modal').dataset.customerEmail;
+            document.getElementById('customer-profile-modal').classList.remove('active');
+            setTimeout(() => this.sendCustomerEmail(email), 300);
+        });
+    }
+
+    // Send email button
+    const sendEmailBtn = document.getElementById('send-email');
+    if (sendEmailBtn) {
+        sendEmailBtn.addEventListener('click', () => {
+            this.sendEmailToCustomer();
+        });
+    }
+
+    // Save customer changes button
+    const saveEditBtn = document.getElementById('save-customer-changes');
+    if (saveEditBtn) {
+        saveEditBtn.addEventListener('click', () => {
+            this.saveCustomerChanges();
+        });
+    }
+
+    // Email template selector
+    const emailTemplateSelect = document.getElementById('email-template');
+    if (emailTemplateSelect) {
+        emailTemplateSelect.addEventListener('change', (e) => {
+            this.applyEmailTemplate(e.target.value);
+        });
+    }
+
+    console.log('✅ Customer action modals setup completed');
+}
+
+// Helper method to setup modal event listeners
+setupModalEventListeners(modalId, closeButtonIds) {
+    const modal = document.getElementById(modalId);
+    if (!modal) {
+        console.error(`❌ Modal not found: ${modalId}`);
+        return;
+    }
+
+    // Close when clicking outside
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.classList.remove('active');
+        }
+    });
+
+    // Close buttons
+    closeButtonIds.forEach(buttonId => {
+        const button = document.getElementById(buttonId);
+        if (button) {
+            button.addEventListener('click', () => {
+                modal.classList.remove('active');
+            });
+        } else {
+            console.warn(`⚠️ Close button not found: ${buttonId}`);
+        }
+    });
+}
+
+// Email functionality
+sendEmailToCustomer() {
+    const email = document.getElementById('email-customer-modal').dataset.customerEmail;
+    const subject = document.getElementById('email-subject').value;
+    const message = document.getElementById('email-message').value;
+
+    if (!subject.trim()) {
+        this.showToast('Please enter an email subject', 'error');
+        document.getElementById('email-subject').focus();
+        return;
+    }
+
+    if (!message.trim()) {
+        this.showToast('Please enter an email message', 'error');
+        document.getElementById('email-message').focus();
+        return;
+    }
+
+    // Simulate sending email
+    const sendBtn = document.getElementById('send-email');
+    const originalText = sendBtn.innerHTML;
+    sendBtn.innerHTML = '<div class="btn-loading"></div>';
+    sendBtn.disabled = true;
+
+    setTimeout(() => {
+        document.getElementById('email-customer-modal').classList.remove('active');
+        sendBtn.innerHTML = originalText;
+        sendBtn.disabled = false;
+        
+        this.showToast(`Email sent to ${email} successfully!`);
+        console.log('📧 Email sent:', { to: email, subject, message });
+    }, 2000);
+}
+
+applyEmailTemplate(template) {
+    const subjectField = document.getElementById('email-subject');
+    const messageField = document.getElementById('email-message');
+
+    const templates = {
+        welcome: {
+            subject: 'Welcome to Our Store!',
+            message: 'Dear Customer,\n\nThank you for joining our store! We\'re excited to have you as part of our community.\n\nAs a welcome gift, here\'s a special discount code: WELCOME10 for 10% off your first order.\n\nHappy shopping!\n\nThe Store Team'
+        },
+        order_update: {
+            subject: 'Your Order Update',
+            message: 'Dear Customer,\n\nWe wanted to provide you with an update on your recent order.\n\nYour order is currently being processed and we\'ll notify you once it ships.\n\nThank you for your patience!\n\nThe Store Team'
+        },
+        shipping: {
+            subject: 'Your Order Has Shipped!',
+            message: 'Great news! Your order has been shipped.\n\nTracking number: [Tracking#]\nCarrier: [Carrier]\nEstimated delivery: [Date]\n\nYou can track your package using the link below:\n[Tracking Link]\n\nThank you for your order!\n\nThe Store Team'
+        },
+        promotion: {
+            subject: 'Special Promotion Just For You!',
+            message: 'Dear Valued Customer,\n\nWe\'re excited to offer you an exclusive promotion as thanks for your loyalty!\n\nUse code SPECIAL25 for 25% off your next order. This offer is valid for the next 7 days.\n\nDon\'t miss out on this special opportunity!\n\nThe Store Team'
+        }
+    };
+
+    if (template && templates[template]) {
+        subjectField.value = templates[template].subject;
+        messageField.value = templates[template].message;
+    }
+}
+
+saveCustomerChanges() {
+    const originalEmail = document.getElementById('edit-customer-modal').dataset.customerEmail;
+    const name = document.getElementById('edit-customer-name').value;
+    const email = document.getElementById('edit-customer-email').value;
+    const phone = document.getElementById('edit-customer-phone').value;
+    const tier = document.getElementById('edit-customer-tier').value;
+    const notes = document.getElementById('edit-customer-notes').value;
+
+    // Find and update customer
+    const customerIndex = this.customers.findIndex(c => c.email === originalEmail);
+    if (customerIndex !== -1) {
+        this.customers[customerIndex].name = name;
+        this.customers[customerIndex].email = email;
+        this.customers[customerIndex].phone = phone;
+        this.customers[customerIndex].notes = notes;
+        
+        // Update orders with new email if changed
+        if (originalEmail !== email) {
+            this.orders.forEach(order => {
+                if (order.shipping.email === originalEmail) {
+                    order.shipping.email = email;
+                }
+            });
+            localStorage.setItem('swiftbuy_orders', JSON.stringify(this.orders));
+        }
+
+        this.showToast('Customer updated successfully!');
+        document.getElementById('edit-customer-modal').classList.remove('active');
+        
+        // Refresh customer section
+        this.updateCustomersSection();
     }
 }
 
