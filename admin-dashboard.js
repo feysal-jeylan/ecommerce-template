@@ -1048,11 +1048,16 @@ filterProducts() {
     });
 
     const currentView = document.querySelector('.view-btn.active').dataset.view;
-    if (currentView === 'grid') {
-        this.renderProductsGridView(filteredProducts);
-    } else {
-        this.renderProductsTableView(filteredProducts);
-    }
+    
+    // Always update both views to keep them in sync
+    this.renderProductsGridView(filteredProducts);
+    this.renderProductsTableView(filteredProducts);
+    
+    // Ensure the correct view is visible
+    document.getElementById('products-grid-view').style.display = currentView === 'grid' ? 'block' : 'none';
+    document.getElementById('products-table-view').style.display = currentView === 'table' ? 'block' : 'none';
+    
+    console.log('🔍 Filtered products:', filteredProducts.length);
 }
 
 sortProducts(sortBy) {
@@ -1100,12 +1105,8 @@ switchProductView(view) {
     document.getElementById('products-grid-view').style.display = view === 'grid' ? 'block' : 'none';
     document.getElementById('products-table-view').style.display = view === 'table' ? 'block' : 'none';
 
-    // Render appropriate view
-    if (view === 'grid') {
-        this.renderProductsGridView();
-    } else {
-        this.renderProductsTableView();
-    }
+    // Use refresh system to ensure both views are updated
+    this.refreshProductViews();
 }
 
 setupBulkActions() {
@@ -1379,11 +1380,126 @@ executeBulkStockUpdate(productIds, stockValue) {
     // Persist changes to products
     this.saveProducts();
     
-    // Update UI
-    this.updateProductsSection();
+    // Update UI - REFRESH BOTH VIEWS
+    this.refreshProductViews();
     
     this.showToast(`✅ Stock updated to ${stockValue} for ${productIds.length} products`, 'success');
     console.log('✅ Bulk stock update completed');
+}
+
+executeBulkPriceUpdate(productIds, priceValue) {
+    console.log('💰 Updating price to:', priceValue, 'for products:', productIds);
+    
+    productIds.forEach(id => {
+        const product = this.products.find(p => p.id === id);
+        if (product) {
+            product.price = priceValue;
+        }
+    });
+    
+    this.saveProducts();
+    
+    // Update UI - REFRESH BOTH VIEWS
+    this.refreshProductViews();
+    
+    this.showToast(`✅ Prices updated to $${priceValue.toFixed(2)} for ${productIds.length} products`, 'success');
+}
+
+executeBulkCategoryUpdate(productIds, categoryValue) {
+    console.log('📂 Updating category to:', categoryValue, 'for products:', productIds);
+    
+    productIds.forEach(id => {
+        const product = this.products.find(p => p.id === id);
+        if (product) {
+            product.category = categoryValue;
+        }
+    });
+    
+    this.saveProducts();
+    
+    // Update UI - REFRESH BOTH VIEWS
+    this.refreshProductViews();
+    
+    this.showToast(`✅ Categories updated to "${this.formatCategoryName(categoryValue)}" for ${productIds.length} products`, 'success');
+}
+
+executeBulkArchiveUpdate(productIds) {
+    console.log('📦 Archiving products:', productIds);
+    
+    productIds.forEach(id => {
+        const product = this.products.find(p => p.id === id);
+        if (product) {
+            product.archived = true;
+            product.visible = false;
+        }
+    });
+    
+    this.saveProducts();
+    
+    // Update UI - REFRESH BOTH VIEWS
+    this.refreshProductViews();
+    
+    this.showToast(`✅ ${productIds.length} products archived successfully`, 'success');
+}
+
+executeBulkDeleteUpdate(productIds) {
+    console.log('🗑️ Deleting products:', productIds);
+    
+    try {
+        // Remove from products array
+        this.products = this.products.filter(product => !productIds.includes(product.id));
+        
+        // Remove from inventory
+        const inventory = JSON.parse(localStorage.getItem('swiftbuy_inventory_v1') || '{}');
+        productIds.forEach(id => {
+            delete inventory[id];
+        });
+        localStorage.setItem('swiftbuy_inventory_v1', JSON.stringify(inventory));
+        
+        // Persist changes
+        this.saveProducts();
+        
+        // Update UI - REFRESH BOTH VIEWS
+        this.refreshProductViews();
+        
+        this.showToast(`✅ ${productIds.length} products permanently deleted`, 'success');
+        
+    } catch (error) {
+        console.error('Bulk delete error:', error);
+        this.showToast('Error deleting products', 'error');
+    }
+}
+
+refreshProductViews() {
+    // Update product stats
+    this.updateProductStats();
+    
+    // Get current view state
+    const currentView = document.querySelector('.view-btn.active')?.dataset.view || 'grid';
+    const currentSearch = document.getElementById('product-search')?.value || '';
+    const currentCategory = document.getElementById('category-filter')?.value || '';
+    const currentStatus = document.getElementById('status-filter')?.value || '';
+    
+    // Re-apply current filters to maintain UI state
+    if (currentSearch || currentCategory || currentStatus) {
+        this.filterProducts();
+    } else {
+        // Refresh both views based on current active view
+        if (currentView === 'grid') {
+            this.renderProductsGridView();
+            // Also update table view in background to keep it in sync
+            this.renderProductsTableView();
+        } else {
+            this.renderProductsTableView();
+            // Also update grid view in background to keep it in sync
+            this.renderProductsGridView();
+        }
+    }
+    
+    // Update bulk actions bar state
+    this.toggleBulkActionsBar();
+    
+    console.log('🔄 Product views refreshed');
 }
 
 bulkUpdatePrice(productIds) {
@@ -1816,33 +1932,6 @@ setupBulkDeleteModal(productIds) {
     });
 }
 
-executeBulkDeleteUpdate(productIds) {
-    console.log('🗑️ Deleting products:', productIds);
-    
-    try {
-        // Remove from products array
-        this.products = this.products.filter(product => !productIds.includes(product.id));
-        
-        // Remove from inventory
-        const inventory = JSON.parse(localStorage.getItem('swiftbuy_inventory_v1') || '{}');
-        productIds.forEach(id => {
-            delete inventory[id];
-        });
-        localStorage.setItem('swiftbuy_inventory_v1', JSON.stringify(inventory));
-        
-        // Persist changes
-        this.saveProducts();
-        
-        // Update UI
-        this.updateProductsSection();
-        this.showToast(`✅ ${productIds.length} products permanently deleted`, 'success');
-        
-    } catch (error) {
-        console.error('Bulk delete error:', error);
-        this.showToast('Error deleting products', 'error');
-    }
-}
-
 // ===== ADVANCED BULK SELECTION FEATURES =====
 
 getSelectedProducts() {
@@ -2011,8 +2100,9 @@ applyBulkFieldUpdate(productIds, field, value) {
         ));
     }
 
-    // Update UI
-    this.updateProductsSection();
+    // Update UI - USE NEW REFRESH SYSTEM
+    this.refreshProductViews();
+    
     this.showToast(`Updated ${field} for ${selectedProducts.length} products`, 'success');
 }
 
