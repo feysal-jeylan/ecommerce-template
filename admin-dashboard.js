@@ -1127,69 +1127,151 @@ applyBulkAction(event) {  // ADD EVENT PARAMETER
 bulkUpdateStock(productIds) {
     console.log('🔄 bulkUpdateStock called with:', productIds);
     
-    const newStock = prompt(`Enter new stock quantity for ${productIds.length} products:`);
-    console.log('📝 User input:', newStock);
+    // Create beautiful modal instead of ugly prompt
+    const modalHTML = `
+        <div class="modal active" id="bulk-stock-modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Update Stock Quantity</h3>
+                    <button class="modal-close" id="close-bulk-stock">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="bulk-stock-input">
+                            <i class="fas fa-boxes"></i>
+                            New stock quantity for ${productIds.length} products
+                        </label>
+                        <input type="number" 
+                               id="bulk-stock-input" 
+                               class="form-input" 
+                               min="0" 
+                               step="1"
+                               placeholder="Enter stock quantity..."
+                               autofocus>
+                        <div class="form-hint">
+                            <i class="fas fa-info-circle"></i>
+                            This will update all selected products to this stock level
+                        </div>
+                    </div>
+                    
+                    <div class="selected-products-preview">
+                        <h4>Selected Products (${productIds.length}):</h4>
+                        <div class="preview-list">
+                            ${productIds.slice(0, 5).map(id => {
+                                const product = this.products.find(p => p.id === id);
+                                return `<div class="preview-item">${product?.name || id}</div>`;
+                            }).join('')}
+                            ${productIds.length > 5 ? `<div class="preview-more">+${productIds.length - 5} more</div>` : ''}
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn-secondary" id="cancel-bulk-stock">
+                        Cancel
+                    </button>
+                    <button class="btn-primary" id="apply-bulk-stock">
+                        <i class="fas fa-check"></i>
+                        Update Stock
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Remove existing modal if any
+    const existingModal = document.getElementById('bulk-stock-modal');
+    if (existingModal) existingModal.remove();
+
+    // Add modal to DOM
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
     
-    if (newStock !== null && !isNaN(newStock) && newStock >= 0) {
-        const stockValue = parseInt(newStock);
-        console.log('🔢 Parsed stock value:', stockValue);
+    // Setup event listeners
+    this.setupBulkStockModal(productIds);
+}
+
+setupBulkStockModal(productIds) {
+    const modal = document.getElementById('bulk-stock-modal');
+    const stockInput = document.getElementById('bulk-stock-input');
+    const applyBtn = document.getElementById('apply-bulk-stock');
+    const cancelBtn = document.getElementById('cancel-bulk-stock');
+    const closeBtn = document.getElementById('close-bulk-stock');
+
+    // Focus on input
+    setTimeout(() => {
+        stockInput?.focus();
+    }, 100);
+
+    // Apply stock update
+    applyBtn?.addEventListener('click', () => {
+        const stockValue = stockInput.value.trim();
         
-        // Update in memory
-        productIds.forEach(id => {
-            console.log('📦 Updating product:', id);
-            const product = this.products.find(p => p.id === id);
-            if (product) {
-                console.log('📊 Before update:', product.inventory.stock);
-                product.inventory.stock = stockValue;
-                console.log('📊 After update:', product.inventory.stock);
-            } else {
-                console.warn('⚠️ Product not found:', id);
-            }
-            
-            // Update inventory system
-            const inventory = JSON.parse(localStorage.getItem('swiftbuy_inventory_v1') || '{}');
-            console.log('📋 Current inventory for', id, ':', inventory[id]);
-            
-            if (inventory[id]) {
-                inventory[id].stock = stockValue;
-                console.log('📋 Updated inventory:', inventory[id]);
-            } else {
-                console.warn('⚠️ No inventory record for:', id);
-                // Create inventory record if it doesn't exist
-                inventory[id] = {
-                    stock: stockValue,
-                    lowStockThreshold: 5,
-                    reserved: 0
-                };
-                console.log('📋 Created new inventory record:', inventory[id]);
-            }
-            
-            localStorage.setItem('swiftbuy_inventory_v1', JSON.stringify(inventory));
-        });
+        if (!stockValue) {
+            this.showToast('Please enter a stock quantity', 'error');
+            stockInput.focus();
+            return;
+        }
+
+        if (isNaN(stockValue) || stockValue < 0) {
+            this.showToast('Please enter a valid stock quantity (number ≥ 0)', 'error');
+            stockInput.focus();
+            return;
+        }
+
+        this.executeBulkStockUpdate(productIds, parseInt(stockValue));
+        modal.remove();
+    });
+
+    // Enter key support
+    stockInput?.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            applyBtn.click();
+        }
+    });
+
+    // Close modal events
+    const closeModal = () => modal.remove();
+    closeBtn?.addEventListener('click', closeModal);
+    cancelBtn?.addEventListener('click', closeModal);
+    
+    modal?.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal();
+    });
+}
+
+executeBulkStockUpdate(productIds, stockValue) {
+    console.log('🔢 Updating stock to:', stockValue, 'for products:', productIds);
+    
+    // Update in memory
+    productIds.forEach(id => {
+        const product = this.products.find(p => p.id === id);
+        if (product) {
+            product.inventory.stock = stockValue;
+        }
         
-        // Persist changes to products
-        console.log('💾 Saving products to localStorage...');
-        const saveResult = this.saveProducts();
-        console.log('💾 Save result:', saveResult);
-        
-        // Verify the save worked
-        setTimeout(() => {
-            const savedProducts = JSON.parse(localStorage.getItem('swiftbuy_products') || '[]');
-            const sampleProduct = savedProducts.find(p => p.id === productIds[0]);
-            console.log('✅ Verification - saved product stock:', sampleProduct?.inventory?.stock);
-        }, 100);
-        
-        // Update UI
-        console.log('🎨 Updating UI...');
-        this.updateProductsSection();
-        
-        this.showToast(`Stock updated to ${stockValue} for ${productIds.length} products`, 'success');
-        console.log('✅ bulkUpdateStock completed successfully');
-        
-    } else if (newStock !== null) {
-        this.showToast('Please enter a valid stock quantity (number ≥ 0)', 'error');
-        console.error('❌ Invalid stock input:', newStock);
-    }
+        // Update inventory system
+        const inventory = JSON.parse(localStorage.getItem('swiftbuy_inventory_v1') || '{}');
+        if (inventory[id]) {
+            inventory[id].stock = stockValue;
+        } else {
+            inventory[id] = {
+                stock: stockValue,
+                lowStockThreshold: 5,
+                reserved: 0
+            };
+        }
+        localStorage.setItem('swiftbuy_inventory_v1', JSON.stringify(inventory));
+    });
+    
+    // Persist changes to products
+    this.saveProducts();
+    
+    // Update UI
+    this.updateProductsSection();
+    
+    this.showToast(`✅ Stock updated to ${stockValue} for ${productIds.length} products`, 'success');
+    console.log('✅ Bulk stock update completed');
 }
 
 bulkUpdatePrice(productIds) {
