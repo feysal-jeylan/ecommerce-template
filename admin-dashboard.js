@@ -938,6 +938,18 @@ renderProductsTableView(productsToShow = this.products) {
     this.updateTableSelectAllState();
 }
 
+updateTableSelectAllState() {
+    const selectAllTable = document.getElementById('select-all-products');
+    if (!selectAllTable) return;
+
+    const tableCheckboxes = document.querySelectorAll('#products-table .product-checkbox');
+    const selectedCount = Array.from(tableCheckboxes).filter(cb => cb.checked).length;
+    const totalCount = tableCheckboxes.length;
+
+    selectAllTable.checked = selectedCount === totalCount && totalCount > 0;
+    selectAllTable.indeterminate = selectedCount > 0 && selectedCount < totalCount;
+}
+
 setupProductEventListeners() {
     // REMOVE OLD EVENT LISTENERS FIRST
     if (this.productSearchHandler) {
@@ -1097,23 +1109,35 @@ switchProductView(view) {
 }
 
 setupBulkActions() {
-    const selectAll = document.getElementById('select-all-products');
-    if (selectAll) {
-        selectAll.addEventListener('change', (e) => {
-            const visibleCheckboxes = Array.from(document.querySelectorAll('.product-checkbox')).filter(checkbox => {
-                return checkbox.closest('tr') !== null;
-            });
-            
-            visibleCheckboxes.forEach(checkbox => {
+    // Table select all
+    const selectAllTable = document.getElementById('select-all-products');
+    if (selectAllTable) {
+        selectAllTable.addEventListener('change', (e) => {
+            const tableCheckboxes = document.querySelectorAll('#products-table .product-checkbox');
+            tableCheckboxes.forEach(checkbox => {
                 checkbox.checked = e.target.checked;
+                const tableRow = checkbox.closest('tr');
+                if (tableRow) {
+                    tableRow.classList.toggle('selected', e.target.checked);
+                }
             });
             this.toggleBulkActionsBar();
         });
     }
 
-    // Individual checkbox changes
+    // Individual checkbox changes for both views
     document.addEventListener('change', (e) => {
         if (e.target.classList.contains('product-checkbox')) {
+            // Handle table row selection
+            if (e.target.closest('#products-table')) {
+                const tableRow = e.target.closest('tr');
+                if (tableRow) {
+                    tableRow.classList.toggle('selected', e.target.checked);
+                }
+                this.updateTableSelectAllState();
+            }
+            
+            // Handle grid card selection (already handled in setupGridSelectAll)
             this.toggleBulkActionsBar();
         }
     });
@@ -1121,7 +1145,6 @@ setupBulkActions() {
     // Bulk action apply
     const applyBulk = document.getElementById('apply-bulk-action');
     if (applyBulk) {
-        // REMOVE THE DUPLICATE LISTENER - KEEP THIS ONE
         applyBulk.addEventListener('click', this.applyBulkAction.bind(this));
     }
 
@@ -1132,9 +1155,6 @@ setupBulkActions() {
             this.cancelBulkSelection();
         });
     }
-
-    // REMOVE THIS LINE - IT'S CREATING DUPLICATE EVENT LISTENERS
-    // this.setupProductActions();
 }
 
 toggleBulkActionsBar() {
