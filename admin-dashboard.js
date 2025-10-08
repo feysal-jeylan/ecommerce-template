@@ -4280,6 +4280,153 @@ editCustomer(email) {
     this.showToast(`Editing ${customer.name}'s details`);
 }
 
+// ===== ENHANCED ACTION BUTTONS SYSTEM =====
+setupEnhancedActionButtons() {
+    console.log('🔧 Setting up enhanced action buttons...');
+    
+    // Enhanced product action buttons with loading states
+    this.setupEnhancedProductActions();
+    
+    // Enhanced order action buttons
+    this.setupEnhancedOrderActions();
+    
+    // Enhanced customer action buttons  
+    this.setupEnhancedCustomerActions();
+    
+    // Enhanced inventory action buttons
+    this.setupEnhancedInventoryActions();
+    
+    console.log('✅ Enhanced action buttons setup completed');
+}
+
+// Enhanced product actions with loading states
+setupEnhancedProductActions() {
+    console.log('📦 Setting up enhanced product actions...');
+    
+    // Add loading states to product action buttons
+    document.addEventListener('click', async (e) => {
+        const target = e.target.closest('button');
+        if (!target) return;
+        
+        // Product quick edit with loading state
+        if (target.classList.contains('btn-quick-edit')) {
+            const productId = target.dataset.id;
+            if (productId && !target.classList.contains('loading')) {
+                target.classList.add('loading');
+                target.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                
+                try {
+                    await this.openQuickEditModal(productId);
+                } finally {
+                    target.classList.remove('loading');
+                    target.innerHTML = '<i class="fas fa-edit"></i>';
+                }
+            }
+        }
+        
+        // Product duplicate with loading state
+        if (target.classList.contains('btn-duplicate')) {
+            const productId = target.dataset.id;
+            if (productId && !target.classList.contains('loading')) {
+                target.classList.add('loading');
+                target.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                
+                try {
+                    await this.safeDuplicateProduct(productId);
+                } finally {
+                    target.classList.remove('loading');
+                    target.innerHTML = '<i class="fas fa-copy"></i>';
+                }
+            }
+        }
+    });
+    
+    console.log('✅ Enhanced product actions ready');
+}
+
+// Enhanced order actions
+setupEnhancedOrderActions() {
+    console.log('📋 Setting up enhanced order actions...');
+    
+    // Order status updates with confirmation
+    document.addEventListener('click', (e) => {
+        const target = e.target.closest('button');
+        if (!target) return;
+        
+        if (target.classList.contains('update-status')) {
+            const orderId = target.dataset.id;
+            if (orderId) {
+                // Add visual feedback
+                target.classList.add('processing');
+                target.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                
+                setTimeout(() => {
+                    target.classList.remove('processing');
+                    target.innerHTML = '<i class="fas fa-edit"></i>';
+                }, 1000);
+            }
+        }
+    });
+    
+    console.log('✅ Enhanced order actions ready');
+}
+
+// Enhanced customer actions
+setupEnhancedCustomerActions() {
+    console.log('👥 Setting up enhanced customer actions...');
+    
+    // Customer actions with tooltips and confirmation
+    document.addEventListener('click', (e) => {
+        const target = e.target.closest('button');
+        if (!target) return;
+        
+        // Email customer with loading state
+        if (target.classList.contains('btn-email')) {
+            const email = target.dataset.email;
+            if (email && !target.classList.contains('loading')) {
+                target.classList.add('loading');
+                target.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                
+                setTimeout(() => {
+                    this.sendCustomerEmail(email);
+                    target.classList.remove('loading');
+                    target.innerHTML = '<i class="fas fa-envelope"></i>';
+                }, 500);
+            }
+        }
+    });
+    
+    console.log('✅ Enhanced customer actions ready');
+}
+
+// Enhanced inventory actions
+setupEnhancedInventoryActions() {
+    console.log('📊 Setting up enhanced inventory actions...');
+    
+    // Inventory actions with real-time feedback
+    document.addEventListener('click', (e) => {
+        const target = e.target.closest('button');
+        if (!target) return;
+        
+        // Restock action with loading state
+        if (target.classList.contains('restock-item')) {
+            const productId = target.dataset.id;
+            if (productId && !target.classList.contains('loading')) {
+                target.classList.add('loading');
+                target.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                
+                setTimeout(() => {
+                    this.showRestockModal(productId);
+                    target.classList.remove('loading');
+                    target.innerHTML = '<i class="fas fa-boxes"></i>';
+                }, 300);
+            }
+        }
+    });
+    
+    console.log('✅ Enhanced inventory actions ready');
+}
+
 // Fixed customer action modals setup
 setupCustomerActionModals() {
     console.log('🔧 Setting up customer action modals...');
