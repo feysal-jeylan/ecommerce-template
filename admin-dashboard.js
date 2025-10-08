@@ -4836,7 +4836,7 @@ applyDefaultSettings() {
     this.populateSettingsForm(defaultSettings);
 }
 
-// ===== ADVANCED SETTINGS APPLICATION SYSTEM =====
+// ===== ENHANCED SETTINGS INTEGRATION SYSTEM =====
 applySettingsToDashboard(settings) {
     console.log('🎛️ Applying advanced settings to dashboard...');
     
@@ -4853,18 +4853,162 @@ applySettingsToDashboard(settings) {
         // 4. MAINTENANCE MODE - Control store state
         this.applyMaintenanceMode(settings.store);
         
-        // 5. INVENTORY ALERTS - Setup monitoring
+        // 5. INVENTORY ALERTS - Setup monitoring with NEW integration
         this.applyInventoryAlertSettings(settings.inventory);
         
         // 6. SHIPPING LOGIC - Update calculations
         this.applyShippingSettings(settings.shipping);
         
-        console.log('✅ All settings applied successfully');
+        // 7. NEW: NOTIFY ALL DEPENDENT COMPONENTS
+        this.notifySettingsChange(settings);
+        
+        console.log('✅ All settings applied and integrated successfully');
         
     } catch (error) {
         console.error('❌ Settings application error:', error);
         this.showToast('Error applying some settings', 'error');
     }
+}
+
+// NEW: Notify all components about settings changes
+notifySettingsChange(settings) {
+    console.log('🔔 Notifying components of settings change...');
+    
+    // Update inventory thresholds across the system
+    if (settings.inventory) {
+        this.updateInventoryThresholds(settings.inventory);
+    }
+    
+    // Refresh all data displays
+    this.refreshAllDataDisplays();
+    
+    // Update any real-time monitors
+    this.updateRealTimeMonitors(settings);
+    
+    // Dispatch custom event for other components
+    this.dispatchSettingsChangeEvent(settings);
+}
+
+// NEW: Update inventory thresholds across all components
+updateInventoryThresholds(inventorySettings) {
+    console.log('📊 Updating inventory thresholds:', inventorySettings);
+    
+    const lowStockThreshold = inventorySettings.lowStockThreshold || 5;
+    const outOfStockThreshold = inventorySettings.outOfStockThreshold || 0;
+    
+    // Update inventory data in localStorage for real-time access
+    const inventory = JSON.parse(localStorage.getItem('swiftbuy_inventory_v1') || '{}');
+    
+    Object.keys(inventory).forEach(productId => {
+        if (inventory[productId]) {
+            inventory[productId].lowStockThreshold = lowStockThreshold;
+        }
+    });
+    
+    localStorage.setItem('swiftbuy_inventory_v1', JSON.stringify(inventory));
+    
+    // Update product objects in memory
+    this.products.forEach(product => {
+        if (product.inventory) {
+            product.inventory.lowStockThreshold = lowStockThreshold;
+        }
+    });
+    
+    // Save updated products
+    this.saveProducts();
+    
+    console.log('✅ Inventory thresholds updated system-wide');
+}
+
+// NEW: Refresh all data displays that depend on settings
+refreshAllDataDisplays() {
+    console.log('🔄 Refreshing all data displays...');
+    
+    // Refresh current section based on what's active
+    switch(this.currentSection) {
+        case 'dashboard':
+            this.updateDashboard();
+            break;
+        case 'products':
+            this.updateProductsSection();
+            break;
+        case 'inventory':
+            this.updateInventorySection();
+            break;
+        case 'analytics':
+            this.refreshAnalyticsData();
+            break;
+        case 'customers':
+            this.updateCustomersSection();
+            break;
+    }
+    
+    // Always refresh these critical components
+    this.updateStockAlerts();
+    this.updateLowStockItems();
+    
+    console.log('✅ All data displays refreshed');
+}
+
+// NEW: Update low stock items calculation
+updateLowStockItems() {
+    console.log('📦 Recalculating low stock items...');
+    
+    // Force recalculation of low stock items
+    this.analytics.lowStockItems = this.getLowStockItems();
+    
+    // Update dashboard stats
+    this.updateStatsCards();
+    
+    // Update stock alerts
+    this.updateStockAlerts();
+    
+    console.log('✅ Low stock items recalculated');
+}
+
+// NEW: Enhanced getLowStockItems with real-time thresholds
+getLowStockItems() {
+    try {
+        const inventory = JSON.parse(localStorage.getItem('swiftbuy_inventory_v1') || '{}');
+        const settings = this.getCurrentSettings();
+        const lowStockThreshold = settings?.inventory?.lowStockThreshold || 5;
+        
+        console.log('🔍 Calculating low stock with threshold:', lowStockThreshold);
+        
+        return this.products.filter(product => {
+            const productInventory = inventory[product.id];
+            const stock = productInventory ? productInventory.stock : product.inventory.stock;
+            const threshold = productInventory ? productInventory.lowStockThreshold : lowStockThreshold;
+            
+            return stock > 0 && stock <= threshold;
+        });
+    } catch (error) {
+        console.error('Error in getLowStockItems:', error);
+        return this.products.filter(product => 
+            product.inventory.stock > 0 && product.inventory.stock <= (product.inventory.lowStockThreshold || 5)
+        );
+    }
+}
+
+// NEW: Dispatch event for other components to listen to
+dispatchSettingsChangeEvent(settings) {
+    const event = new CustomEvent('adminSettingsChanged', {
+        detail: { settings, timestamp: new Date().toISOString() }
+    });
+    window.dispatchEvent(event);
+    
+    console.log('📢 Settings change event dispatched');
+}
+
+// NEW: Update real-time monitors
+updateRealTimeMonitors(settings) {
+    // Restart auto-refresh if interval changed
+    if (settings.general?.autoRefresh !== this.currentAutoRefresh) {
+        this.applyAutoRefreshSettings(settings.general);
+    }
+    
+    // Update any other real-time monitors here
+    console.log('⏰ Real-time monitors updated');
 }
 
 // ===== ENHANCED PAGINATION SYSTEM =====
