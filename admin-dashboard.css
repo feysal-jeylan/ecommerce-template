@@ -2779,6 +2779,21 @@ input[type="checkbox"] {
         grid-template-columns: repeat(2, 1fr);
     }
 }
+
+/* Enhanced toast for mobile */
+@media (max-width: 768px) {
+    .admin-toast {
+        left: 5% !important;
+        right: 5% !important;
+        max-width: 90% !important;
+        text-align: center;
+        padding: 1rem 1.25rem;
+    }
+    
+    .admin-toast i {
+        font-size: 1.1rem;
+    }
+}
 /* Responsive Design */
 @media (max-width: 1200px) {
     .charts-row-2,

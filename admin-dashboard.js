@@ -174,19 +174,79 @@ clearAllData() {
 
 // ===== CHART RESPONSIVENESS HANDLERS =====
 setupChartResponsiveness() {
-    // Handle window resize for charts
+    // Handle window resize for charts with proper debouncing
     let resizeTimeout;
+    this.isResizing = false;
+    
     window.addEventListener('resize', () => {
+        if (this.isResizing) return;
+        this.isResizing = true;
+        
         clearTimeout(resizeTimeout);
         resizeTimeout = setTimeout(() => {
             if (this.currentSection === 'analytics') {
+                console.log('🔄 Responsive chart refresh triggered');
                 this.refreshChartsOnResize();
             }
-        }, 250);
+            this.isResizing = false;
+        }, 500); // Increased delay to prevent rapid refreshes
     });
     
     // Initialize chart responsiveness
     this.initializeResponsiveCharts();
+}
+
+// ===== ENHANCED LOADING STATES =====
+showResponsiveLayoutHint() {
+    const viewport = window.innerWidth;
+    let hint = '';
+    
+    if (viewport < 768) {
+        hint = '📱 Mobile-optimized view';
+    } else if (viewport < 1024) {
+        hint = '📟 Tablet-optimized view';
+    } else {
+        hint = '🖥️  Desktop-optimized view';
+    }
+    
+    // Show subtle hint about current layout
+    this.showToast(hint, 'info', 2000);
+}
+
+// Enhanced toast with types
+showToast(message, type = 'success', duration = 3000) {
+    // Remove existing toasts
+    document.querySelectorAll('.admin-toast').forEach(toast => toast.remove());
+    
+    const toast = document.createElement('div');
+    toast.className = `admin-toast ${type}`;
+    
+    const icons = {
+        success: 'check-circle',
+        error: 'exclamation-triangle',
+        warning: 'exclamation-circle',
+        info: 'info-circle'
+    };
+    
+    toast.innerHTML = `
+        <i class="fas fa-${icons[type] || 'check'}"></i>
+        <span>${message}</span>
+    `;
+    
+    document.body.appendChild(toast);
+    
+    // Add responsive styling
+    if (window.innerWidth < 768) {
+        toast.style.maxWidth = '90%';
+        toast.style.left = '5%';
+        toast.style.right = '5%';
+    }
+    
+    setTimeout(() => {
+        if (toast.parentNode) {
+            toast.parentNode.removeChild(toast);
+        }
+    }, duration);
 }
 
 initializeResponsiveCharts() {
@@ -195,25 +255,60 @@ initializeResponsiveCharts() {
 }
 
 refreshChartsOnResize() {
-    console.log('🔄 Refreshing charts for new viewport size...');
+    const viewport = window.innerWidth;
+    console.log('📱 Chart optimization for:', viewport + 'px viewport');
     
-    // Destroy and recreate charts
-    if (this.revenueAnalyticsChart) {
-        this.revenueAnalyticsChart.destroy();
-        this.renderRevenueAnalyticsChart();
+    // Only refresh if we're actually in analytics section
+    if (this.currentSection !== 'analytics') {
+        console.log('⏸️  Skipping chart refresh - not in analytics section');
+        return;
     }
     
-    if (this.categoryChart) {
-        this.categoryChart.destroy();
-        this.renderCategoryChart();
+    // Check if we actually need to refresh (significant size change)
+    if (this.lastViewport && Math.abs(viewport - this.lastViewport) < 50) {
+        console.log('📏 Minor resize, skipping chart refresh');
+        return;
     }
     
-    if (this.trafficChart) {
-        this.trafficChart.destroy();
-        this.renderTrafficChart();
-    }
+    this.lastViewport = viewport;
     
-    this.showToast('Charts optimized for current screen size');
+    console.log('🔄 Optimized chart refresh initiated');
+    
+    // Use requestAnimationFrame for smoother performance
+    requestAnimationFrame(() => {
+        this.safeChartRefresh();
+    });
+}
+
+safeChartRefresh() {
+    try {
+        // Safe chart destruction with existence checks
+        const charts = [
+            { instance: this.revenueAnalyticsChart, name: 'Revenue Chart', render: () => this.renderRevenueAnalyticsChart() },
+            { instance: this.categoryChart, name: 'Category Chart', render: () => this.renderCategoryChart() },
+            { instance: this.trafficChart, name: 'Traffic Chart', render: () => this.renderTrafficChart() }
+        ];
+        
+        charts.forEach((chart, index) => {
+            if (chart.instance && typeof chart.instance.destroy === 'function') {
+                setTimeout(() => {
+                    console.log(`📊 Refreshing ${chart.name}`);
+                    chart.instance.destroy();
+                    chart.render();
+                }, index * 200); // Stagger refreshes for performance
+            }
+        });
+        
+    } catch (error) {
+        console.error('❌ Chart refresh error:', error);
+    }
+}
+
+
+
+initializeResponsiveCharts() {
+    // Set initial chart sizes based on viewport
+    this.updateChartSizes();
 }
 
 updateChartSizes() {
@@ -330,16 +425,147 @@ getStorageUsage() {
         return {};
     }
 }
- constructor() {
+constructor() {
     this.currentSection = 'dashboard';
     this.orders = [];
     this.products = [];
     this.customers = [];
     this.analytics = {};
-    this.duplicating = false; // ← ADD THIS LINE
-    this.productActionHandler = null; // ← ADD THIS LINE
-    this.productSearchHandler = null; // ← ADD THIS LINE
+    this.duplicating = false;
+    this.productActionHandler = null;
+    this.productSearchHandler = null;
+    this.loadingAnalytics = false;
+    this.isResizing = false;
+    this.lastViewport = window.innerWidth; // ← ADD THIS LINE
     this.init();
+}
+
+// Place this AFTER the constructor but BEFORE the init() method
+
+// ===== ANALYTICS RESPONSIVENESS TESTING =====
+testAnalyticsResponsiveness() {
+    // Wait for DOM to be ready
+    setTimeout(() => {
+        console.group('📱 ANALYTICS RESPONSIVENESS TEST');
+        console.log('🖥️  Current viewport:', window.innerWidth + 'px');
+        
+        const breakpoints = [
+            { name: 'Mobile Small', width: 375 },
+            { name: 'Mobile Large', width: 768 },
+            { name: 'Tablet', width: 1024 },
+            { name: 'Desktop', width: 1200 }
+        ];
+        
+        // Test current layout
+        const currentLayout = this.getCurrentLayoutAnalysis();
+        console.log('📊 Current Layout Analysis:', currentLayout);
+        
+        // Test element responsiveness
+        this.testElementResponsiveness();
+        
+        console.groupEnd();
+    }, 500);
+}
+
+getCurrentLayoutAnalysis() {
+    const analysis = {
+        viewport: window.innerWidth,
+        breakpoint: this.getCurrentBreakpoint(),
+        kpiGrid: this.testKpiGrid(),
+        chartLayout: this.testChartLayout(),
+        datePicker: this.testDatePicker()
+    };
+    
+    return analysis;
+}
+
+getCurrentBreakpoint() {
+    const width = window.innerWidth;
+    if (width < 576) return 'xs';
+    if (width < 768) return 'sm';
+    if (width < 992) return 'md';
+    if (width < 1200) return 'lg';
+    return 'xl';
+}
+
+testKpiGrid() {
+    const kpiGrid = document.querySelector('.kpi-grid');
+    if (!kpiGrid) return 'KPI grid not found';
+    
+    const style = window.getComputedStyle(kpiGrid);
+    return {
+        gridTemplate: style.gridTemplateColumns,
+        gap: style.gap,
+        itemCount: kpiGrid.children.length
+    };
+}
+
+testChartLayout() {
+    const chartsRow = document.querySelector('.charts-row-2');
+    if (!chartsRow) return 'Charts row not found';
+    
+    const style = window.getComputedStyle(chartsRow);
+    return {
+        gridTemplate: style.gridTemplateColumns,
+        charts: chartsRow.querySelectorAll('.chart-card').length
+    };
+}
+
+testDatePicker() {
+    const datePicker = document.querySelector('.date-range-picker');
+    if (!datePicker) return 'Date picker not found';
+    
+    return {
+        buttons: datePicker.querySelectorAll('.date-range-btn').length,
+        visible: datePicker.offsetParent !== null
+    };
+}
+
+testElementResponsiveness() {
+    const elements = [
+        { selector: '.kpi-grid', name: 'KPI Grid' },
+        { selector: '.charts-row-2', name: 'Charts Row' },
+        { selector: '.date-range-picker', name: 'Date Picker' },
+        { selector: '.advanced-metrics', name: 'Advanced Metrics' }
+    ];
+    
+    elements.forEach(element => {
+        const el = document.querySelector(element.selector);
+        if (el) {
+            const rect = el.getBoundingClientRect();
+            console.log(`✅ ${element.name}:`, {
+                visible: rect.width > 0 && rect.height > 0,
+                dimensions: `${Math.round(rect.width)}x${Math.round(rect.height)}`,
+                inViewport: rect.top >= 0 && rect.left >= 0 && 
+                           rect.bottom <= window.innerHeight && 
+                           rect.right <= window.innerWidth
+            });
+        } else {
+            console.warn(`❌ ${element.name}: Element not found`);
+        }
+    });
+}
+
+testChartResponsiveness() {
+    const charts = [
+        { name: 'Revenue Chart', element: document.getElementById('revenue-analytics-chart') },
+        { name: 'Category Chart', element: document.getElementById('category-chart') },
+        { name: 'Traffic Chart', element: document.getElementById('traffic-chart') }
+    ];
+    
+    charts.forEach(chart => {
+        if (chart.element) {
+            const canvas = chart.element;
+            const computedStyle = window.getComputedStyle(canvas);
+            console.log(`📊 ${chart.name}:`, {
+                width: computedStyle.width,
+                height: computedStyle.height,
+                aspectRatio: (canvas.width / canvas.height).toFixed(2)
+            });
+        } else {
+            console.warn(`❌ ${chart.name} not found`);
+        }
+    });
 }
 
 init() {
@@ -349,6 +575,7 @@ init() {
     this.setupEventListeners();
     this.setupRealTimeUpdates();
     this.setupChartResponsiveness(); // ← ADD THIS LINE
+    this.setupTouchGestures(); // ← ADD THIS EXACT LINE
     this.updateDashboard();
     this.setupAddProductModal();
     this.setupQuickEditModal();
@@ -369,6 +596,57 @@ init() {
     }
     
     console.log('✅ Enterprise Admin Dashboard Ready');
+}
+
+// Place this AFTER the init() method but BEFORE loadAllData()
+
+// ===== TOUCH GESTURE SUPPORT FOR MOBILE =====
+setupTouchGestures() {
+    // Swipe support for date range navigation
+    let touchStartX = 0;
+    let touchEndX = 0;
+    
+    const analyticsSection = document.getElementById('analytics');
+    if (!analyticsSection) return;
+    
+    analyticsSection.addEventListener('touchstart', (e) => {
+        touchStartX = e.changedTouches[0].screenX;
+    });
+    
+    analyticsSection.addEventListener('touchend', (e) => {
+        touchEndX = e.changedTouches[0].screenX;
+        this.handleSwipeGesture(touchStartX, touchEndX);
+    });
+}
+
+handleSwipeGesture(startX, endX) {
+    const swipeThreshold = 50;
+    const swipeDistance = endX - startX;
+    
+    if (Math.abs(swipeDistance) > swipeThreshold) {
+        if (swipeDistance > 0) {
+            // Swipe right - previous period
+            this.navigateDateRange('previous');
+        } else {
+            // Swipe left - next period
+            this.navigateDateRange('next');
+        }
+    }
+}
+
+navigateDateRange(direction) {
+    const ranges = ['7d', '30d', '90d', '1y'];
+    const currentIndex = ranges.indexOf(this.currentDateRange);
+    
+    let newIndex;
+    if (direction === 'next') {
+        newIndex = currentIndex < ranges.length - 1 ? currentIndex + 1 : 0;
+    } else {
+        newIndex = currentIndex > 0 ? currentIndex - 1 : ranges.length - 1;
+    }
+    
+    this.changeDateRange(ranges[newIndex]);
+    this.showToast(`Switched to ${ranges[newIndex]} view`);
 }
     // ===== DATA MANAGEMENT =====
     loadAllData() {
@@ -4172,11 +4450,64 @@ exportCustomersToCSV() {
 }
 
 updateAnalyticsSection() {
-    this.currentDateRange = '30d'; // Default date range
-    this.initializeAnalyticsDashboard();
-    this.setupAnalyticsEventListeners();
+    // Prevent multiple simultaneous analytics loads
+    if (this.loadingAnalytics) return;
+    this.loadingAnalytics = true;
+    
+    this.currentDateRange = '30d';
+    
+    console.log('📈 Loading analytics section...');
+    
+    // Show responsive layout hint
+    this.showResponsiveLayoutHint();
+    
+    // Show loading state
+    this.showAnalyticsLoadingState();
+    
+    // Progressive loading for better performance
+    setTimeout(() => {
+        this.initializeAnalyticsDashboard();
+        this.setupAnalyticsEventListeners();
+        
+        // Test responsiveness after a short delay
+        setTimeout(() => {
+            this.testAnalyticsResponsiveness();
+            this.loadingAnalytics = false;
+        }, 1000);
+    }, 100);
 }
 
+showAnalyticsLoadingState() {
+    const analyticsSection = document.getElementById('analytics');
+    if (!analyticsSection) return;
+    
+    // Add loading indicator for heavy components
+    const loadingHTML = `
+        <div class="analytics-loading" style="
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 200px; 
+            color: var(--admin-text-muted);
+        ">
+            <div style="text-align: center;">
+                <i class="fas fa-chart-line fa-spin" style="font-size: 2rem; margin-bottom: 1rem;"></i>
+                <p>Loading advanced analytics...</p>
+            </div>
+        </div>
+    `;
+    
+    // Only show if charts aren't already loaded
+    if (!document.getElementById('revenue-analytics-chart')) {
+        const chartContainers = analyticsSection.querySelectorAll('.chart-card');
+        chartContainers.forEach(container => {
+            const existingCanvas = container.querySelector('canvas');
+            if (!existingCanvas) {
+                container.insertAdjacentHTML('beforeend', loadingHTML);
+            }
+        });
+    }
+}
 initializeAnalyticsDashboard() {
     this.updateKPIMetrics();
     this.renderRevenueAnalyticsChart();
@@ -4328,16 +4659,17 @@ getPreviousDateRange() {
     return currentIndex > 0 ? ranges[currentIndex - 1] : ranges[0];
 }
 
+// Update revenue chart with mobile optimization
 renderRevenueAnalyticsChart() {
     const ctx = document.getElementById('revenue-analytics-chart');
     if (!ctx) return;
 
-    // Destroy existing chart
     if (this.revenueAnalyticsChart) {
         this.revenueAnalyticsChart.destroy();
     }
 
     const data = this.generateRevenueAnalyticsData();
+    const options = this.getChartOptions();
 
     this.revenueAnalyticsChart = new Chart(ctx, {
         type: 'line',
@@ -4349,7 +4681,7 @@ renderRevenueAnalyticsChart() {
                     data: data.revenue,
                     borderColor: '#2563eb',
                     backgroundColor: 'rgba(37, 99, 235, 0.1)',
-                    borderWidth: 3,
+                    borderWidth: window.innerWidth <= 768 ? 2 : 3,
                     fill: true,
                     tension: 0.4,
                     yAxisID: 'y'
@@ -4359,7 +4691,7 @@ renderRevenueAnalyticsChart() {
                     data: data.orders,
                     borderColor: '#7c3aed',
                     backgroundColor: 'rgba(124, 58, 237, 0.1)',
-                    borderWidth: 2,
+                    borderWidth: window.innerWidth <= 768 ? 1 : 2,
                     fill: false,
                     tension: 0.4,
                     yAxisID: 'y1'
@@ -4367,7 +4699,7 @@ renderRevenueAnalyticsChart() {
             ]
         },
         options: {
-            responsive: true,
+            ...options,
             interaction: {
                 mode: 'index',
                 intersect: false,
@@ -4383,7 +4715,7 @@ renderRevenueAnalyticsChart() {
                     display: true,
                     position: 'left',
                     title: {
-                        display: true,
+                        display: window.innerWidth > 480,
                         text: 'Revenue ($)'
                     },
                     grid: {
@@ -4395,38 +4727,12 @@ renderRevenueAnalyticsChart() {
                     display: true,
                     position: 'right',
                     title: {
-                        display: true,
+                        display: window.innerWidth > 480,
                         text: 'Orders'
                     },
                     grid: {
                         drawOnChartArea: false,
                     },
-                }
-            },
-            plugins: {
-                legend: {
-                    display: false
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            let label = context.dataset.label || '';
-                            if (label) {
-                                label += ': ';
-                            }
-                            if (context.parsed.y !== null) {
-                                if (context.dataset.label === 'Revenue') {
-                                    label += new Intl.NumberFormat('en-US', {
-                                        style: 'currency',
-                                        currency: 'USD'
-                                    }).format(context.parsed.y);
-                                } else {
-                                    label += context.parsed.y;
-                                }
-                            }
-                            return label;
-                        }
-                    }
                 }
             }
         }
@@ -5130,6 +5436,47 @@ formatSectionTitle(sectionId) {
             });
     }
 
+    // Place this AFTER other utility methods but BEFORE chart rendering methods
+
+// Enhanced mobile-optimized chart configuration
+getChartOptions() {
+    const isMobile = window.innerWidth <= 768;
+    const isTablet = window.innerWidth <= 1024;
+    
+    return {
+        responsive: true,
+        maintainAspectRatio: true, // ← CHANGED from false to true
+        aspectRatio: isMobile ? 1.5 : isTablet ? 2 : 2.5, // ← ADDED aspect ratio control
+        plugins: {
+            legend: {
+                position: isMobile ? 'bottom' : 'top',
+                labels: {
+                    boxWidth: isMobile ? 12 : 16,
+                    font: {
+                        size: isMobile ? 10 : 12
+                    }
+                }
+            }
+        },
+        scales: {
+            x: {
+                ticks: {
+                    font: {
+                        size: isMobile ? 10 : 12
+                    },
+                    maxRotation: isMobile ? 45 : 0
+                }
+            },
+            y: {
+                ticks: {
+                    font: {
+                        size: isMobile ? 10 : 12
+                    }
+                }
+            }
+        }
+    };
+}
     showToast(message, type = 'success') {
         // Create toast notification
         const toast = document.createElement('div');
