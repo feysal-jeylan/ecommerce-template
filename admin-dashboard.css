@@ -103,12 +103,13 @@ body {
   margin-bottom: 0.5rem;
 }
 
+/* ===== FIX SIDEBAR NAVIGATION VISIBILITY ===== */
 .nav-link {
   display: flex;
   align-items: center;
   gap: 0.75rem;
   padding: 0.875rem 1.5rem;
-  color: var(--admin-text-light);
+  color: #e2e8f0; /* CHANGED: Light gray for better contrast on dark background */
   text-decoration: none;
   transition: var(--admin-transition);
   position: relative;
@@ -116,22 +117,33 @@ body {
 }
 
 .nav-link:hover {
-  color: white;
-  background: rgba(255, 255, 255, 0.1);
+  color: white; /* ENHANCED: Brighter white on hover */
+  background: rgba(255, 255, 255, 0.15); /* Slightly stronger hover background */
 }
 
 .nav-item.active .nav-link {
-  color: white;
-  background: rgba(255, 255, 255, 0.15);
+  color: white; /* CHANGED: Ensure active items are clearly visible */
+  background: rgba(255, 255, 255, 0.2); /* ENHANCED: Stronger active background */
   border-right: 3px solid var(--admin-primary);
+  font-weight: 600; /* ADDED: Bold text for active state */
 }
 
 .nav-link i {
   width: 20px;
   text-align: center;
   font-size: 1.1rem;
+  color: #cbd5e1; /* CHANGED: Lighter icon color */
 }
 
+.nav-item.active .nav-link i {
+  color: white; /* CHANGED: White icons for active state */
+}
+
+.nav-link:hover i {
+  color: white; /* CHANGED: White icons on hover */
+}
+
+/* Ensure badge visibility */
 .nav-badge {
   background: var(--admin-primary);
   color: white;
