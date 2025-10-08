@@ -2909,10 +2909,13 @@ input[type="checkbox"] {
 }
 
 /* ===== ADVANCED SETTINGS SYSTEM ===== */
+/* ===== ADVANCED SETTINGS RESPONSIVENESS ===== */
+
+/* Mobile-first settings layout */
 .settings-layout {
-    display: grid;
-    grid-template-columns: 280px 1fr;
-    gap: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
     margin-top: 1.5rem;
 }
 
@@ -2921,23 +2924,35 @@ input[type="checkbox"] {
     border-radius: var(--admin-radius);
     box-shadow: var(--admin-shadow);
     border: 1px solid var(--admin-border);
-    padding: 1.5rem;
-    height: fit-content;
-    position: sticky;
-    top: 2rem;
+    padding: 1rem;
+    order: 2; /* Mobile: sidebar comes after content */
+    width: 100%;
 }
 
 .settings-nav {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     gap: 0.5rem;
+    overflow-x: auto;
+    padding-bottom: 0.5rem;
+    scrollbar-width: thin;
+    scrollbar-color: var(--admin-border) transparent;
+}
+
+.settings-nav::-webkit-scrollbar {
+    height: 4px;
+}
+
+.settings-nav::-webkit-scrollbar-thumb {
+    background: var(--admin-border);
+    border-radius: 2px;
 }
 
 .nav-item {
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    padding: 1rem 1.25rem;
+    padding: 0.875rem 1rem;
     background: none;
     border: none;
     color: var(--admin-text-muted);
@@ -2946,6 +2961,9 @@ input[type="checkbox"] {
     cursor: pointer;
     transition: var(--admin-transition);
     font-weight: 500;
+    white-space: nowrap;
+    flex-shrink: 0;
+    min-width: auto;
 }
 
 .nav-item:hover {
