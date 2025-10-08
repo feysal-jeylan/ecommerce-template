@@ -3375,15 +3375,18 @@ input[type="checkbox"] {
     display: none;
 }
 
+/* FIXED toggle switch styling */
 .toggle-label {
     position: relative;
     display: inline-block;
     width: 50px;
     height: 24px;
     background: var(--admin-border);
-    border-radius: 12px;
+    border-radius: 24px; /* ← CHANGED from 12px to 24px for perfect circle */
     cursor: pointer;
     transition: var(--admin-transition);
+    flex-shrink: 0;
+    border: 2px solid transparent; /* ← ADD border for consistency */
 }
 
 .toggle-label::before {
@@ -3401,10 +3404,41 @@ input[type="checkbox"] {
 
 .toggle-input:checked + .toggle-label {
     background: var(--admin-primary);
+    border-color: var(--admin-primary); /* ← ADD border color when active */
 }
 
 .toggle-input:checked + .toggle-label::before {
     transform: translateX(26px);
+    background: white;
+}
+
+/* Fix for medium screens where toggle appears square */
+@media (min-width: 768px) and (max-width: 1024px) {
+    .toggle-label {
+        width: 52px; /* ← Slightly wider for medium screens */
+        height: 26px; /* ← Slightly taller */
+        border-radius: 26px; /* ← Perfect circle */
+    }
+    
+    .toggle-label::before {
+        width: 22px;
+        height: 22px;
+        top: 2px;
+        left: 2px;
+    }
+    
+    .toggle-input:checked + .toggle-label::before {
+        transform: translateX(26px);
+    }
+}
+
+/* Ensure toggle maintains perfect circle on all screens */
+.toggle-label {
+    border-radius: 50em !important; /* ← FORCE perfect circle */
+}
+
+.toggle-label::before {
+    border-radius: 50% !important; /* ← FORCE perfect circle */
 }
 
 /* Shipping & Payment Methods */
