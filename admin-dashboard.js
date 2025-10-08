@@ -607,6 +607,9 @@ init() {
     this.updateDashboard();
     this.setupAddProductModal();
     this.setupQuickEditModal();
+    this.setupRealTimeValidation();
+    this.setupSettingsBackupSystem();
+    this.setupSmartSettingsSaving();
     // Enhanced settings observer initialization
 console.log('🔧 Initializing settings observers...');
 this.initSettingsObservers();
@@ -6526,11 +6529,329 @@ clearFieldError(input) {
 }
 
 
-autoSaveSetting(input) {
-    console.log('💾 Auto-saving setting change...', input.name || input.id);
-    // This would typically save to backend
-    this.showToast('Setting saved automatically', 'success', 2000);
+// ===== SETTINGS IMPORT/EXPORT & BACKUP SYSTEM =====
+setupSettingsBackupSystem() {
+    console.log('💾 Setting up settings backup system...');
+    
+    // Export settings button
+    const exportBtn = document.getElementById('export-settings');
+    if (exportBtn) {
+        exportBtn.addEventListener('click', () => {
+            this.exportSettings();
+        });
+    }
+    
+    // Import settings button
+    const importBtn = document.getElementById('import-settings');
+    if (importBtn) {
+        importBtn.addEventListener('click', () => {
+            this.importSettings();
+        });
+    }
+    
+    // Create backup on settings changes
+    this.setupAutomaticBackups();
+    
+    console.log('✅ Settings backup system ready');
 }
+
+// Export settings to JSON file
+exportSettings() {
+    try {
+        const settings = localStorage.getItem('swiftbuy_admin_settings');
+        if (!settings) {
+            this.showToast('No settings found to export', 'warning');
+            return;
+        }
+        
+        const settingsData = JSON.parse(settings);
+        const exportData = {
+            ...settingsData,
+            exportedAt: new Date().toISOString(),
+            version: '1.0.0',
+            exportType: 'swiftbuy_admin_settings'
+        };
+        
+        const blob = new Blob([JSON.stringify(exportData, null, 2)], { 
+            type: 'application/json' 
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `swiftbuy-settings-${new Date().toISOString().split('T')[0]}.json`;
+        a.click();
+        
+        this.showToast('Settings exported successfully!', 'success');
+        console.log('📤 Settings exported:', exportData);
+        
+    } catch (error) {
+        console.error('Export error:', error);
+        this.showToast('Error exporting settings', 'error');
+    }
+}
+
+// Import settings from JSON file
+importSettings() {
+    // Create file input
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = '.json';
+    fileInput.style.display = 'none';
+    
+    fileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            try {
+                const importedData = JSON.parse(event.target.result);
+                
+                // Validate imported settings
+                if (this.validateImportedSettings(importedData)) {
+                    this.confirmSettingsImport(importedData);
+                } else {
+                    this.showToast('Invalid settings file format', 'error');
+                }
+            } catch (error) {
+                console.error('Import error:', error);
+                this.showToast('Error reading settings file', 'error');
+            }
+        };
+        
+        reader.readAsText(file);
+    });
+    
+    document.body.appendChild(fileInput);
+    fileInput.click();
+    document.body.removeChild(fileInput);
+}
+
+// Validate imported settings structure
+validateImportedSettings(importedData) {
+    if (!importedData || typeof importedData !== 'object') {
+        return false;
+    }
+    
+    // Check for required structure
+    if (!importedData.data || !importedData.data.general || !importedData.data.store) {
+        return false;
+    }
+    
+    // Check export type
+    if (importedData.exportType !== 'swiftbuy_admin_settings') {
+        return false;
+    }
+    
+    return true;
+}
+
+// Confirm settings import with user
+confirmSettingsImport(importedData) {
+    const modalHTML = `
+        <div class="modal active" id="import-confirm-modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Confirm Settings Import</h3>
+                    <button class="modal-close" id="close-import-confirm">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="warning-message">
+                        <div class="warning-icon">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <div class="warning-content">
+                            <h4>Replace Current Settings?</h4>
+                            <p>This will overwrite all your current settings. This action cannot be undone.</p>
+                            <div class="import-details">
+                                <strong>Export Date:</strong> ${new Date(importedData.exportedAt).toLocaleString()}<br>
+                                <strong>Version:</strong> ${importedData.version}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="confirmation-checkbox">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="confirm-import-backup">
+                            <span class="checkmark"></span>
+                            Create backup of current settings before importing
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn-secondary" id="cancel-import">
+                        Cancel
+                    </button>
+                    <button class="btn-primary" id="confirm-import">
+                        <i class="fas fa-file-import"></i>
+                        Import Settings
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Remove existing modal
+    const existingModal = document.getElementById('import-confirm-modal');
+    if (existingModal) existingModal.remove();
+    
+    // Add modal to DOM
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    this.setupImportConfirmModal(importedData);
+}
+
+// Setup import confirmation modal
+setupImportConfirmModal(importedData) {
+    const modal = document.getElementById('import-confirm-modal');
+    const confirmBtn = document.getElementById('confirm-import');
+    const cancelBtn = document.getElementById('cancel-import');
+    const closeBtn = document.getElementById('close-import-confirm');
+    const backupCheckbox = document.getElementById('confirm-import-backup');
+    
+    // Confirm import
+    confirmBtn.addEventListener('click', () => {
+        // Create backup if requested
+        if (backupCheckbox.checked) {
+            this.createSettingsBackup();
+        }
+        
+        // Import settings
+        this.executeSettingsImport(importedData);
+        modal.remove();
+    });
+    
+    // Cancel import
+    const closeModal = () => modal.remove();
+    cancelBtn.addEventListener('click', closeModal);
+    closeBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal();
+    });
+}
+
+// Execute the settings import
+executeSettingsImport(importedData) {
+    try {
+        // Save imported settings
+        localStorage.setItem('swiftbuy_admin_settings', JSON.stringify(importedData));
+        
+        // Reload settings
+        this.loadSettings();
+        
+        // Apply settings to dashboard
+        this.applySettingsToDashboard(importedData.data);
+        
+        this.showToast('Settings imported successfully!', 'success');
+        console.log('📥 Settings imported:', importedData);
+        
+    } catch (error) {
+        console.error('Import execution error:', error);
+        this.showToast('Error importing settings', 'error');
+    }
+}
+
+// Create automatic backup before major changes
+setupAutomaticBackups() {
+    // Backup before settings reset
+    const resetBtn = document.getElementById('reset-settings');
+    if (resetBtn) {
+        const originalClick = resetBtn.onclick;
+        resetBtn.onclick = (e) => {
+            this.createSettingsBackup();
+            if (originalClick) originalClick.call(resetBtn, e);
+        };
+    }
+}
+
+// Create settings backup
+createSettingsBackup() {
+    try {
+        const currentSettings = localStorage.getItem('swiftbuy_admin_settings');
+        if (currentSettings) {
+            const backupKey = `swiftbuy_settings_backup_${Date.now()}`;
+            localStorage.setItem(backupKey, currentSettings);
+            console.log('💾 Settings backup created:', backupKey);
+            
+            // Limit to 5 backups
+            this.cleanupOldBackups();
+        }
+    } catch (error) {
+        console.error('Backup creation error:', error);
+    }
+}
+
+// Clean up old backups (keep only 5 most recent)
+cleanupOldBackups() {
+    try {
+        const backupKeys = [];
+        
+        // Find all backup keys
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith('swiftbuy_settings_backup_')) {
+                backupKeys.push(key);
+            }
+        }
+        
+        // Sort by timestamp (newest first)
+        backupKeys.sort((a, b) => {
+            const timeA = parseInt(a.split('_').pop());
+            const timeB = parseInt(b.split('_').pop());
+            return timeB - timeA;
+        });
+        
+        // Remove old backups beyond limit
+        if (backupKeys.length > 5) {
+            const toRemove = backupKeys.slice(5);
+            toRemove.forEach(key => {
+                localStorage.removeItem(key);
+                console.log('🗑️ Removed old backup:', key);
+            });
+        }
+        
+    } catch (error) {
+        console.error('Backup cleanup error:', error);
+    }
+}
+
+// Restore from backup (emergency recovery)
+restoreFromBackup() {
+    const backupKeys = [];
+    
+    // Find all backup keys
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('swiftbuy_settings_backup_')) {
+            const timestamp = parseInt(key.split('_').pop());
+            backupKeys.push({ key, timestamp });
+        }
+    }
+    
+    if (backupKeys.length === 0) {
+        this.showToast('No backups found', 'warning');
+        return;
+    }
+    
+    // Use most recent backup
+    backupKeys.sort((a, b) => b.timestamp - a.timestamp);
+    const latestBackup = backupKeys[0];
+    
+    try {
+        const backupData = localStorage.getItem(latestBackup.key);
+        if (backupData) {
+            localStorage.setItem('swiftbuy_admin_settings', backupData);
+            this.loadSettings();
+            this.showToast('Settings restored from backup!', 'success');
+            console.log('🔄 Settings restored from backup:', latestBackup.key);
+        }
+    } catch (error) {
+        console.error('Backup restore error:', error);
+        this.showToast('Error restoring from backup', 'error');
+    }
+}
+
 
 autoSaveSetting(input) {
     console.log('💾 Auto-saving setting change...');
