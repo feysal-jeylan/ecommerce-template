@@ -5622,8 +5622,11 @@ validateSettingInput(input) {
     }
 }
 
+// ===== SMART SETTINGS SAVING =====
 setupSmartSettingsSaving() {
     let saveTimeout;
+    
+    console.log('💾 Initializing smart settings saving...');
     
     // Auto-save on input change with debouncing
     document.querySelectorAll('.setting-input, .toggle-input').forEach(input => {
@@ -5634,6 +5637,12 @@ setupSmartSettingsSaving() {
             }, 1500);
         });
     });
+}
+
+autoSaveSetting(input) {
+    console.log('💾 Auto-saving setting change...', input.name || input.id);
+    // This would typically save to backend
+    this.showToast('Setting saved automatically', 'success', 2000);
 }
 
 autoSaveSetting(input) {
