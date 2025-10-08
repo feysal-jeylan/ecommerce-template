@@ -1203,6 +1203,96 @@ a:focus-visible {
     }
 }
 
+/* Advanced form responsiveness */
+.setting-item {
+    margin-bottom: 1.5rem;
+    break-inside: avoid;
+}
+
+.setting-item:last-child {
+    margin-bottom: 0;
+}
+
+.setting-item label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: var(--admin-text);
+    font-size: 0.9rem;
+}
+
+.setting-input {
+    width: 100%;
+    padding: 0.875rem 1rem;
+    border: 1px solid var(--admin-border);
+    border-radius: 8px;
+    background: var(--admin-surface);
+    color: var(--admin-text);
+    font-size: 0.9rem;
+    transition: var(--admin-transition);
+    box-sizing: border-box;
+}
+
+/* Advanced toggle switch responsiveness */
+.toggle-switch {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    min-height: 44px; /* Touch-friendly height */
+}
+
+.toggle-label {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 24px;
+    background: var(--admin-border);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: var(--admin-transition);
+    flex-shrink: 0;
+}
+
+.toggle-label::before {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 20px;
+    height: 20px;
+    background: white;
+    border-radius: 50%;
+    transition: var(--admin-transition);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.toggle-input:checked + .toggle-label {
+    background: var(--admin-primary);
+}
+
+.toggle-input:checked + .toggle-label::before {
+    transform: translateX(26px);
+}
+
+/* Touch-friendly toggle on mobile */
+@media (hover: none) and (pointer: coarse) {
+    .toggle-label {
+        width: 60px;
+        height: 32px;
+        min-height: 44px;
+    }
+    
+    .toggle-label::before {
+        width: 28px;
+        height: 28px;
+        top: 2px;
+        left: 2px;
+    }
+    
+    .toggle-input:checked + .toggle-label::before {
+        transform: translateX(26px);
+    }
+}
 .setting-item {
     margin-bottom: 1.5rem;
 }
