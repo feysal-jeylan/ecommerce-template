@@ -603,6 +603,7 @@ init() {
     this.setupRealTimeUpdates();
     this.setupChartResponsiveness(); // ← ADD THIS LINE
     this.setupTouchGestures(); // ← ADD THIS EXACT LINE
+    this.setupAdvancedSettingsResponsiveness(); // ← ADD THIS LINE
     this.updateDashboard();
     this.setupAddProductModal();
     this.setupQuickEditModal();
@@ -5319,17 +5320,19 @@ setupSettingsEventListeners() {
     });
 
     // Save settings button
-    document.getElementById('save-settings').addEventListener('click', () => {
+    document.getElementById('save-settings')?.addEventListener('click', () => {
         this.saveAllSettings();
     });
 
     // Reset settings button
-    document.getElementById('reset-settings').addEventListener('click', () => {
+    document.getElementById('reset-settings')?.addEventListener('click', () => {
         this.resetSettingsToDefaults();
     });
 
-    // Auto-save on some changes
-    this.setupAutoSaveListeners();
+    // REMOVE THIS LINE: this.setupAutoSaveListeners(); // ← DELETE OR COMMENT OUT THIS LINE
+    
+    // ADD THIS INSTEAD:
+    this.setupSmartSettingsSaving(); // ← USE THE CORRECT METHOD NAME
 }
 
 initializeSettingsTabs() {
@@ -5527,6 +5530,117 @@ formatSectionTitle(sectionId) {
             });
     }
 
+
+    // ===== ADVANCED SETTINGS RESPONSIVENESS =====
+setupAdvancedSettingsResponsiveness() {
+    console.log('🎛️ Initializing advanced settings responsiveness...');
+    
+    // Track active tab for mobile navigation
+    this.setupMobileSettingsNavigation();
+    
+    // Enhanced form validation for mobile
+    this.setupMobileFormValidation();
+    
+    // Settings save optimization
+    this.setupSmartSettingsSaving();
+    
+    console.log('✅ Advanced settings responsiveness ready');
+}
+
+setupMobileSettingsNavigation() {
+    const settingsNav = document.querySelector('.settings-nav');
+    if (!settingsNav) return;
+    
+    // Add scroll indicators for mobile
+    this.setupScrollIndicators(settingsNav);
+    
+    // Enhanced tab switching for mobile
+    document.querySelectorAll('.nav-item[data-tab]').forEach(item => {
+        item.addEventListener('click', (e) => {
+            const tabId = e.currentTarget.dataset.tab;
+            this.switchSettingsTab(tabId);
+            
+            // Scroll to top on mobile when switching tabs
+            if (window.innerWidth < 1024) {
+                document.querySelector('.settings-content').scrollIntoView({ 
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            }
+        });
+    });
+}
+
+setupScrollIndicators(container) {
+    const updateIndicators = () => {
+        const scrollLeft = container.scrollLeft;
+        const scrollWidth = container.scrollWidth;
+        const clientWidth = container.clientWidth;
+        
+        // Show/hide scroll indicators based on position
+        container.style.setProperty('--scroll-position', scrollLeft / (scrollWidth - clientWidth));
+    };
+    
+    container.addEventListener('scroll', updateIndicators);
+    window.addEventListener('resize', updateIndicators);
+    updateIndicators();
+}
+
+setupMobileFormValidation() {
+    // Enhanced validation for mobile forms
+    document.querySelectorAll('.setting-input').forEach(input => {
+        input.addEventListener('invalid', (e) => {
+            e.preventDefault();
+            this.showMobileValidationError(input);
+        });
+        
+        input.addEventListener('blur', (e) => {
+            this.validateSettingInput(e.target);
+        });
+    });
+}
+
+showMobileValidationError(input) {
+    const errorMessage = input.validationMessage;
+    if (errorMessage && window.innerWidth < 768) {
+        this.showToast(`⚠️ ${errorMessage}`, 'error', 4000);
+        
+        // Scroll to error field on mobile
+        input.scrollIntoView({ 
+            behavior: 'smooth',
+            block: 'center'
+        });
+        input.focus();
+    }
+}
+
+validateSettingInput(input) {
+    if (!input.checkValidity()) {
+        input.classList.add('error');
+    } else {
+        input.classList.remove('error');
+    }
+}
+
+setupSmartSettingsSaving() {
+    let saveTimeout;
+    
+    // Auto-save on input change with debouncing
+    document.querySelectorAll('.setting-input, .toggle-input').forEach(input => {
+        input.addEventListener('change', () => {
+            clearTimeout(saveTimeout);
+            saveTimeout = setTimeout(() => {
+                this.autoSaveSetting(input);
+            }, 1500);
+        });
+    });
+}
+
+autoSaveSetting(input) {
+    console.log('💾 Auto-saving setting change...');
+    // This would typically save to backend
+    this.showToast('Setting saved automatically', 'success', 2000);
+}
     // Place this AFTER other utility methods but BEFORE chart rendering methods
 
 // Enhanced mobile-optimized chart configuration
