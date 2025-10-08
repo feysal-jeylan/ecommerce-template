@@ -4647,22 +4647,327 @@ applyDefaultSettings() {
     this.populateSettingsForm(defaultSettings);
 }
 
-// Apply settings to dashboard (basic implementation)
+// ===== ADVANCED SETTINGS APPLICATION SYSTEM =====
 applySettingsToDashboard(settings) {
-    console.log('🎛️ Applying settings to dashboard...');
+    console.log('🎛️ Applying advanced settings to dashboard...');
     
-    // Apply theme if changed
-    if (settings.general?.theme) {
-        document.documentElement.setAttribute('data-theme', settings.general.theme);
+    try {
+        // 1. THEME SYSTEM - Apply immediately
+        this.applyThemeSettings(settings.general);
+        
+        // 2. PAGINATION - Update display limits
+        this.applyPaginationSettings(settings.general);
+        
+        // 3. AUTO-REFRESH - Setup smart intervals
+        this.applyAutoRefreshSettings(settings.general);
+        
+        // 4. MAINTENANCE MODE - Control store state
+        this.applyMaintenanceMode(settings.store);
+        
+        // 5. INVENTORY ALERTS - Setup monitoring
+        this.applyInventoryAlertSettings(settings.inventory);
+        
+        // 6. SHIPPING LOGIC - Update calculations
+        this.applyShippingSettings(settings.shipping);
+        
+        console.log('✅ All settings applied successfully');
+        
+    } catch (error) {
+        console.error('❌ Settings application error:', error);
+        this.showToast('Error applying some settings', 'error');
+    }
+}
+
+// ===== ENHANCED PAGINATION SYSTEM =====
+
+// Update products display with pagination
+updateProductsSection() {
+    this.updateProductStats();
+    
+    // Apply pagination if setting exists
+    const productsToShow = this.applyPaginationToProducts(this.products);
+    this.renderProductsGridView(productsToShow);
+    this.renderProductsTableView(productsToShow);
+    this.setupProductEventListeners();
+    this.loadProductSalesData();
+}
+
+// Apply pagination to products array
+applyPaginationToProducts(products) {
+    if (!this.itemsPerPage || this.itemsPerPage >= products.length) {
+        return products;
     }
     
-    // Apply items per page
-    if (settings.general?.itemsPerPage) {
-        // This would affect pagination in future implementations
-        console.log('Items per page set to:', settings.general.itemsPerPage);
+    // For now, show limited products (in real app, would have proper pagination UI)
+    return products.slice(0, this.itemsPerPage);
+}
+
+// Enhanced orders table with pagination
+updateOrdersTable() {
+    const container = document.getElementById('orders-table');
+    if (!container) return;
+
+    const ordersToShow = this.applyPaginationToOrders(this.orders);
+    const tbody = container.querySelector('tbody');
+    
+    tbody.innerHTML = ordersToShow.map(order => `
+        <tr>
+            <td><strong>${order.order.orderId}</strong></td>
+            <td>
+                <div class="customer-info">
+                    <strong>${order.shipping.firstName} ${order.shipping.lastName}</strong>
+                    <span>${order.shipping.email}</span>
+                </div>
+            </td>
+            <td>${this.formatDate(order.order.timestamp)}</td>
+            <td>$${order.order.total.toFixed(2)}</td>
+            <td>
+                <span class="status-badge ${order.tracking?.status || 'processing'}">
+                    ${this.formatStatus(order.tracking?.status || 'processing')}
+                </span>
+            </td>
+            <td>
+                <div class="action-buttons">
+                    <button class="btn-action view-order" data-id="${order.order.orderId}">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn-action update-status" data-id="${order.order.orderId}">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+    
+    // Show pagination info
+    this.showPaginationInfo('orders', this.orders.length, ordersToShow.length);
+}
+
+applyPaginationToOrders(orders) {
+    if (!this.itemsPerPage || this.itemsPerPage >= orders.length) {
+        return orders;
+    }
+    return orders.slice(0, this.itemsPerPage);
+}
+
+// Show pagination information
+showPaginationInfo(section, totalItems, showingItems) {
+    if (totalItems === showingItems) return;
+    
+    console.log(`📊 ${section}: Showing ${showingItems} of ${totalItems} items`);
+    
+    // In a real implementation, you'd update a pagination UI element
+    const infoElement = document.getElementById(`${section}-pagination-info`);
+    if (infoElement) {
+        infoElement.textContent = `Showing ${showingItems} of ${totalItems}`;
+    }
+}
+// 1. THEME SYSTEM - Real-time theme switching
+applyThemeSettings(generalSettings) {
+    if (!generalSettings?.theme) return;
+    
+    const theme = generalSettings.theme;
+    const html = document.documentElement;
+    
+    // Remove existing theme classes
+    html.classList.remove('theme-light', 'theme-dark', 'theme-auto');
+    
+    // Apply new theme
+    if (theme === 'auto') {
+        // System preference detection
+        const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        html.classList.add(isDark ? 'theme-dark' : 'theme-light');
+        html.setAttribute('data-theme', isDark ? 'dark' : 'light');
+    } else {
+        html.classList.add(`theme-${theme}`);
+        html.setAttribute('data-theme', theme);
     }
     
-    // You can add more settings application logic here
+    // Update CSS variables for smooth transitions
+    this.updateThemeCSSVariables(theme);
+    console.log('🎨 Theme applied:', theme);
+}
+
+updateThemeCSSVariables(theme) {
+    const root = document.documentElement;
+    
+    if (theme === 'dark' || (theme === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        root.style.setProperty('--admin-bg', '#0f172a');
+        root.style.setProperty('--admin-surface', '#1e293b');
+        root.style.setProperty('--admin-text', '#f1f5f9');
+        root.style.setProperty('--admin-text-muted', '#94a3b8');
+        root.style.setProperty('--admin-border', '#334155');
+    } else {
+        // Light theme (default)
+        root.style.setProperty('--admin-bg', '#f8fafc');
+        root.style.setProperty('--admin-surface', '#ffffff');
+        root.style.setProperty('--admin-text', '#1e293b');
+        root.style.setProperty('--admin-text-muted', '#64748b');
+        root.style.setProperty('--admin-border', '#e2e8f0');
+    }
+}
+
+// 2. PAGINATION CONTROL - Dynamic items per page
+applyPaginationSettings(generalSettings) {
+    if (!generalSettings?.itemsPerPage) return;
+    
+    const itemsPerPage = generalSettings.itemsPerPage;
+    
+    // Store for use in data displays
+    this.itemsPerPage = itemsPerPage;
+    
+    // Update any currently visible tables
+    this.refreshCurrentDataDisplays();
+    
+    console.log('📊 Pagination set to:', itemsPerPage, 'items per page');
+}
+
+refreshCurrentDataDisplays() {
+    // Refresh currently active section
+    switch(this.currentSection) {
+        case 'products':
+            this.updateProductsSection();
+            break;
+        case 'orders':
+            this.updateOrdersTable();
+            break;
+        case 'customers':
+            this.updateCustomersSection();
+            break;
+        case 'inventory':
+            this.updateInventorySection();
+            break;
+    }
+}
+
+// 3. AUTO-REFRESH - Smart dashboard updates
+applyAutoRefreshSettings(generalSettings) {
+    if (!generalSettings?.autoRefresh) return;
+    
+    const refreshInterval = generalSettings.autoRefresh * 1000; // Convert to milliseconds
+    
+    // Clear existing interval
+    if (this.autoRefreshInterval) {
+        clearInterval(this.autoRefreshInterval);
+    }
+    
+    // Only setup if interval is > 0
+    if (refreshInterval > 0) {
+        this.autoRefreshInterval = setInterval(() => {
+            this.autoRefreshDashboard();
+        }, refreshInterval);
+        
+        console.log('🔄 Auto-refresh enabled:', refreshInterval / 1000, 'seconds');
+    } else {
+        console.log('⏸️ Auto-refresh disabled');
+    }
+}
+
+autoRefreshDashboard() {
+    if (this.currentSection === 'dashboard') {
+        this.loadAllData();
+        this.showToast('Dashboard auto-refreshed', 'info', 2000);
+    }
+}
+
+// 4. MAINTENANCE MODE - Store state management
+applyMaintenanceMode(storeSettings) {
+    if (!storeSettings) return;
+    
+    const maintenanceMode = storeSettings.maintenanceMode || false;
+    
+    // Store maintenance state for frontend integration
+    localStorage.setItem('swiftbuy_maintenance_mode', maintenanceMode.toString());
+    
+    if (maintenanceMode) {
+        console.log('🚧 Maintenance mode: ON - Store frontend would be disabled');
+        // In a real system, this would communicate with the store frontend
+    } else {
+        console.log('🏪 Maintenance mode: OFF - Store is operational');
+    }
+}
+
+// 5. INVENTORY ALERTS - Proactive monitoring
+applyInventoryAlertSettings(inventorySettings) {
+    if (!inventorySettings) return;
+    
+    // Setup low stock monitoring
+    if (inventorySettings.lowStockAlerts) {
+        this.setupInventoryAlerts(inventorySettings);
+    } else {
+        this.disableInventoryAlerts();
+    }
+    
+    console.log('📦 Inventory alerts:', inventorySettings.lowStockAlerts ? 'ENABLED' : 'DISABLED');
+}
+
+setupInventoryAlerts(inventorySettings) {
+    const threshold = inventorySettings.lowStockThreshold || 5;
+    
+    // Check inventory on settings change
+    const lowStockItems = this.getLowStockItems();
+    
+    if (lowStockItems.length > 0 && inventorySettings.lowStockAlerts) {
+        this.showToast(`⚠️ ${lowStockItems.length} products are low in stock!`, 'warning');
+    }
+}
+
+disableInventoryAlerts() {
+    // Clear any existing alert intervals
+    if (this.inventoryAlertInterval) {
+        clearInterval(this.inventoryAlertInterval);
+    }
+}
+
+// 6. SHIPPING LOGIC - Dynamic calculations
+applyShippingSettings(shippingSettings) {
+    if (!shippingSettings) return;
+    
+    // Store shipping configuration
+    this.shippingConfig = {
+        standard: {
+            enabled: shippingSettings.standardShipping !== false,
+            cost: shippingSettings.standardShippingCost || 4.99,
+            freeThreshold: shippingSettings.freeShippingThreshold || 50.00
+        },
+        express: {
+            enabled: shippingSettings.expressShipping !== false,
+            cost: shippingSettings.expressShippingCost || 9.99
+        },
+        international: {
+            enabled: shippingSettings.internationalShipping || false,
+            cost: shippingSettings.internationalShippingCost || 19.99
+        }
+    };
+    
+    console.log('🚚 Shipping settings applied:', this.shippingConfig);
+}
+
+// Utility to get calculated shipping cost
+calculateShipping(total, country = 'US') {
+    const config = this.shippingConfig;
+    
+    if (!config) {
+        return 4.99; // Default fallback
+    }
+    
+    // Free shipping threshold check
+    if (config.standard.enabled && total >= config.standard.freeThreshold) {
+        return 0;
+    }
+    
+    // International shipping
+    if (country !== 'US' && config.international.enabled) {
+        return config.international.cost;
+    }
+    
+    // Express shipping (customer choice in real scenario)
+    if (config.express.enabled) {
+        return config.express.cost;
+    }
+    
+    // Standard shipping
+    return config.standard.enabled ? config.standard.cost : 0;
 }
 // Helper method to setup modal event listeners
 setupModalEventListeners(modalId, closeButtonIds) {
