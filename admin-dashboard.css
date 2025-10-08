@@ -2204,6 +2204,32 @@ input[type="checkbox"] {
     margin-bottom: 2rem;
 }
 
+/* Laptop/Desktop layout optimization */
+@media (min-width: 1025px) and (max-width: 1440px) {
+    .charts-row-3 {
+        grid-template-columns: 1.2fr 1fr 0.8fr; /* ← ADJUSTED proportions */
+        gap: 1.25rem; /* ← Reduced gap */
+    }
+    
+    /* Specific sizing for each chart in the row */
+    .charts-row-3 .chart-card:nth-child(1) { /* Sales by Category */
+        min-width: 0; /* Allow flexible sizing */
+    }
+    
+    .charts-row-3 .chart-card:nth-child(2) { /* Top Products */
+        min-width: 0;
+    }
+    
+    .charts-row-3 .chart-card:nth-child(3) { /* Traffic Sources - FIXED */
+        min-width: 0;
+        max-width: 100%; /* Prevent overflow */
+    }
+    
+    /* Reduce padding on desktop to fit better */
+    .charts-row-3 .chart-card {
+        padding: 1.25rem;
+    }
+}
 .large-chart {
     grid-column: span 2;
 }
