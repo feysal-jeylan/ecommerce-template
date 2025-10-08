@@ -1234,13 +1234,14 @@ a:focus-visible {
 }
 
 /* Advanced toggle switch responsiveness */
-.toggle-switch {
+..toggle-switch {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 1rem;
-    min-height: 44px; /* Touch-friendly height */
+    min-height: 44px;
+    padding: 0.5rem 0;
 }
-
 .toggle-label {
     position: relative;
     display: inline-block;
@@ -1272,6 +1273,8 @@ a:focus-visible {
 
 .toggle-input:checked + .toggle-label::before {
     transform: translateX(26px);
+
+    
 }
 
 /* Touch-friendly toggle on mobile */
@@ -3372,7 +3375,7 @@ input[type="checkbox"] {
 }
 
 .toggle-input {
-    display: none;
+    display: none !important;
 }
 
 /* FIXED toggle switch styling */
@@ -3381,12 +3384,13 @@ input[type="checkbox"] {
     display: inline-block;
     width: 50px;
     height: 24px;
-    background: var(--admin-border);
-    border-radius: 24px; /* ← CHANGED from 12px to 24px for perfect circle */
+    background: #cbd5e1; /* Off state color */
+    border-radius: 50em; /* Perfect circle */
     cursor: pointer;
-    transition: var(--admin-transition);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     flex-shrink: 0;
-    border: 2px solid transparent; /* ← ADD border for consistency */
+    border: 2px solid transparent;
+    box-shadow: inset 0 0 0 1px #cbd5e1;
 }
 
 .toggle-label::before {
@@ -3398,18 +3402,54 @@ input[type="checkbox"] {
     height: 20px;
     background: white;
     border-radius: 50%;
-    transition: var(--admin-transition);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
+/* Hover States */
+.toggle-label:hover {
+    box-shadow: inset 0 0 0 2px #94a3b8;
+}
+
+.toggle-input:checked + .toggle-label:hover {
+    box-shadow: inset 0 0 0 2px #1d4ed8;
+}
+
+/* Focus States */
+.toggle-input:focus-visible + .toggle-label {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+}
+
+/* Mobile - Standard size */
+@media (max-width: 767px) {
+    .toggle-label {
+        width: 50px;
+        height: 24px;
+    }
+    
+    .toggle-label::before {
+        width: 20px;
+        height: 20px;
+        top: 2px;
+        left: 2px;
+    }
+    
+    .toggle-input:checked + .toggle-label::before {
+        transform: translateX(26px);
+    }
+}
+/* ON State */
 .toggle-input:checked + .toggle-label {
-    background: var(--admin-primary);
-    border-color: var(--admin-primary); /* ← ADD border color when active */
+    background: #2563eb; /* Primary blue */
+    border-color: #2563eb;
+    box-shadow: inset 0 0 0 1px #2563eb;
 }
 
 .toggle-input:checked + .toggle-label::before {
     transform: translateX(26px);
     background: white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 /* Fix for medium screens where toggle appears square */
