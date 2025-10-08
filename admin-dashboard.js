@@ -607,6 +607,7 @@ init() {
     this.updateDashboard();
     this.setupAddProductModal();
     this.setupQuickEditModal();
+    this.initSettingsObservers(); // ← ADD THIS
     
     // Setup enhanced action buttons with error handling
     if (typeof this.setupEnhancedActionButtons === 'function') {
@@ -4378,6 +4379,41 @@ saveAllSettings() {
         this.showToast(`❌ Failed to save settings: ${error.message}`, 'error');
         return false;
     }
+}
+// ===== REAL-TIME SETTINGS OBSERVERS =====
+
+// Watch for system theme changes (for auto theme mode)
+setupThemeObserver() {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    
+    mediaQuery.addEventListener('change', (e) => {
+        // Only react if theme is set to 'auto'
+        const currentSettings = this.getCurrentSettings();
+        if (currentSettings?.general?.theme === 'auto') {
+            this.applyThemeSettings(currentSettings.general);
+            this.showToast('System theme change detected', 'info', 2000);
+        }
+    });
+}
+
+// Get current settings from form (for real-time updates)
+getCurrentSettings() {
+    try {
+        const saved = localStorage.getItem('swiftbuy_admin_settings');
+        if (saved) {
+            const settingsPackage = JSON.parse(saved);
+            return settingsPackage.data;
+        }
+    } catch (error) {
+        console.error('Error getting current settings:', error);
+    }
+    return null;
+}
+
+// Initialize settings observers
+initSettingsObservers() {
+    this.setupThemeObserver();
+    console.log('👀 Settings observers initialized');
 }
 
 // Collect all settings from form fields
