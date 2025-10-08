@@ -607,7 +607,10 @@ init() {
     this.updateDashboard();
     this.setupAddProductModal();
     this.setupQuickEditModal();
-    this.initSettingsObservers(); // ← ADD THIS
+    // Enhanced settings observer initialization
+console.log('🔧 Initializing settings observers...');
+this.initSettingsObservers();
+console.log('✅ Settings observers initialization completed');
     
     // Setup enhanced action buttons with error handling
     if (typeof this.setupEnhancedActionButtons === 'function') {
