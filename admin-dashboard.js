@@ -440,6 +440,33 @@ constructor() {
     this.init();
 }
 
+// ===== SALES BY CATEGORY DEBUG =====
+debugCategoryChart() {
+    console.group('🔍 Sales by Category Debug');
+    
+    // Check if chart element exists
+    const chartElement = document.getElementById('category-chart');
+    console.log('📊 Chart Element:', chartElement);
+    
+    if (chartElement) {
+        console.log('✅ Chart element found');
+        console.log('📏 Dimensions:', chartElement.offsetWidth + 'x' + chartElement.offsetHeight);
+        console.log('🎨 Computed Style:', window.getComputedStyle(chartElement).display);
+    } else {
+        console.error('❌ Chart element not found!');
+    }
+    
+    // Check if chart instance exists
+    console.log('🔄 Chart Instance:', this.categoryChart);
+    
+    // Check category data
+    const categoryData = this.generateCategoryData();
+    console.log('📈 Category Data:', categoryData);
+    
+    console.groupEnd();
+}
+
+
 // Place this AFTER the constructor but BEFORE the init() method
 
 // ===== ANALYTICS RESPONSIVENESS TESTING =====
@@ -3118,27 +3145,36 @@ openAddProductModal() {
         return { labels, values };
     }
 
-    generateCategoryData() {
-        const categorySales = {};
-        
-        this.orders.forEach(order => {
-            order.order.items.forEach(item => {
-                // Extract category from product data
-                const product = this.products.find(p => p.id === item.id);
-                const category = product?.category || 'Unknown';
-                
-                if (!categorySales[category]) {
-                    categorySales[category] = 0;
-                }
-                categorySales[category] += (item.price_cents * item.quantity) / 100;
-            });
+generateCategoryData() {
+    const categorySales = {};
+    
+    // Count sales by category from orders
+    this.orders.forEach(order => {
+        order.order.items.forEach(item => {
+            // Find product category
+            const product = this.products.find(p => p.id === item.id);
+            const category = product?.category || 'Unknown';
+            
+            if (!categorySales[category]) {
+                categorySales[category] = 0;
+            }
+            categorySales[category] += (item.price_cents * item.quantity) / 100;
         });
+    });
 
+    // If no data, return empty but valid structure
+    if (Object.keys(categorySales).length === 0) {
         return {
-            labels: Object.keys(categorySales),
-            values: Object.values(categorySales)
+            labels: ['No Data'],
+            values: [1] // Single value for placeholder
         };
     }
+
+    return {
+        labels: Object.keys(categorySales),
+        values: Object.values(categorySales)
+    };
+}
 
     // ===== REAL-TIME UPDATES =====
     setupRealTimeUpdates() {
@@ -4511,13 +4547,18 @@ showAnalyticsLoadingState() {
 initializeAnalyticsDashboard() {
     this.updateKPIMetrics();
     this.renderRevenueAnalyticsChart();
-    this.renderCategoryChart();
+    this.renderCategoryChart(); // This should create the category chart
     this.renderTrafficChart();
     this.updateFunnelData();
     this.updateTopProducts();
     this.updateAdvancedMetrics();
     this.startRealTimeActivity();
     this.updateRealTimeActivities();
+    
+    // Add debug call
+    setTimeout(() => {
+        this.debugCategoryChart();
+    }, 1000);
 }
 
 setupAnalyticsEventListeners() {
@@ -4782,42 +4823,92 @@ getDaysInRange(startDate, endDate) {
 
 renderCategoryChart() {
     const ctx = document.getElementById('category-chart');
-    if (!ctx) return;
+    if (!ctx) {
+        console.error('❌ Category chart canvas not found!');
+        return;
+    }
 
+    // Destroy existing chart
     if (this.categoryChart) {
         this.categoryChart.destroy();
     }
 
     const categoryData = this.generateCategoryData();
+    const options = this.getChartOptions();
 
-    this.categoryChart = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: categoryData.labels,
-            datasets: [{
-                data: categoryData.values,
-                backgroundColor: [
-                    '#2563eb', '#7c3aed', '#10b981', '#f59e0b', '#ef4444',
-                    '#8b5cf6', '#06b6d4', '#84cc16', '#f97316', '#64748b'
-                ],
-                borderWidth: 2,
-                borderColor: '#ffffff'
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: {
-                        usePointStyle: true,
-                        padding: 20
-                    }
-                }
+    console.log('🎨 Rendering Category Chart with data:', categoryData);
+
+    // Ensure we have data to display
+    if (categoryData.labels.length === 0 || categoryData.values.length === 0) {
+        console.warn('⚠️ No category data available, showing placeholder');
+        this.showCategoryChartPlaceholder();
+        return;
+    }
+
+    try {
+        this.categoryChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: categoryData.labels,
+                datasets: [{
+                    data: categoryData.values,
+                    backgroundColor: [
+                        '#2563eb', '#7c3aed', '#10b981', '#f59e0b', '#ef4444',
+                        '#8b5cf6', '#06b6d4', '#84cc16', '#f97316', '#64748b'
+                    ],
+                    borderWidth: 2,
+                    borderColor: '#ffffff'
+                }]
             },
-            cutout: '60%'
-        }
-    });
+            options: {
+                ...options,
+                plugins: {
+                    ...options.plugins,
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            usePointStyle: true,
+                            padding: 20
+                        }
+                    }
+                },
+                cutout: '60%'
+            }
+        });
+        
+        console.log('✅ Category chart rendered successfully');
+    } catch (error) {
+        console.error('❌ Category chart rendering error:', error);
+        this.showCategoryChartPlaceholder();
+    }
+}
+
+
+showCategoryChartPlaceholder() {
+    const ctx = document.getElementById('category-chart');
+    if (!ctx) return;
+    
+    const placeholderHTML = `
+        <div style="
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            height: 200px; 
+            color: var(--admin-text-muted);
+            text-align: center;
+            padding: 2rem;
+        ">
+            <i class="fas fa-chart-pie" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+            <h4>No Sales Data Yet</h4>
+            <p>Sales by category will appear here once you have orders.</p>
+            <small>Make some sales to see category distribution</small>
+        </div>
+    `;
+    
+    // Replace canvas with placeholder
+    ctx.style.display = 'none';
+    ctx.insertAdjacentHTML('afterend', placeholderHTML);
 }
 
 renderTrafficChart() {
