@@ -2230,6 +2230,44 @@ input[type="checkbox"] {
         padding: 1.25rem;
     }
 }
+/* Global chart overflow protection */
+.chart-container {
+    width: 100%;
+    overflow: hidden;
+    position: relative;
+}
+
+.chart-card > div {
+    width: 100%;
+    overflow: hidden;
+}
+
+/* Ensure Chart.js respects container boundaries */
+.chartjs-render-monitor {
+    max-width: 100% !important;
+    width: 100% !important;
+}
+
+/* Emergency fallback for very wide laptop screens */
+@media (min-width: 1441px) and (max-width: 1920px) {
+    .admin-content {
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+    
+    .charts-row-3 {
+        grid-template-columns: 1fr 1fr 1fr;
+        max-width: 100%;
+    }
+}
+
+/* Mobile fallback - if desktop fixes affect mobile */
+@media (max-width: 1024px) {
+    .charts-row-3 {
+        grid-template-columns: 1fr; /* Stack on mobile */
+        gap: 1rem;
+    }
+}
 .large-chart {
     grid-column: span 2;
 }
