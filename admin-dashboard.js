@@ -5603,13 +5603,6 @@ document.getElementById('reset-settings')?.addEventListener('click', () => {
         this.showToast('Settings reset to defaults', 'success');
     }
 });
-
-    // Reset settings button
-    document.getElementById('reset-settings')?.addEventListener('click', () => {
-        this.resetSettingsToDefaults();
-    });
-
-    
     // ADD THIS INSTEAD:
     this.setupSmartSettingsSaving(); // ← USE THE CORRECT METHOD NAME
 }
