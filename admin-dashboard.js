@@ -6387,6 +6387,145 @@ setupSmartSettingsSaving() {
     });
 }
 
+// ===== REAL-TIME SETTINGS VALIDATION =====
+setupRealTimeValidation() {
+    console.log('🔍 Setting up real-time settings validation...');
+    
+    // Validate numeric inputs in real-time
+    document.addEventListener('input', (e) => {
+        if (e.target.classList.contains('setting-input')) {
+            this.validateSettingInput(e.target);
+        }
+    });
+    
+    // Validate on form submission
+    document.addEventListener('submit', (e) => {
+        if (e.target.closest('.settings-card')) {
+            e.preventDefault();
+            if (this.validateAllSettings()) {
+                this.saveAllSettings();
+            }
+        }
+    });
+    
+    console.log('✅ Real-time settings validation ready');
+}
+
+// Validate individual setting input
+validateSettingInput(input) {
+    const value = input.value.trim();
+    const fieldName = input.previousElementSibling?.textContent || input.name;
+    
+    // Clear previous validation
+    input.classList.remove('error', 'success');
+    
+    // Skip validation for empty optional fields
+    if (!value && !input.required) {
+        return true;
+    }
+    
+    let isValid = true;
+    let errorMessage = '';
+    
+    // Numeric validation
+    if (input.type === 'number' || input.id.includes('threshold') || input.id.includes('stock')) {
+        const numValue = parseFloat(value);
+        if (isNaN(numValue) || numValue < 0) {
+            isValid = false;
+            errorMessage = `${fieldName} must be a positive number`;
+        } else if (input.min && numValue < parseFloat(input.min)) {
+            isValid = false;
+            errorMessage = `${fieldName} must be at least ${input.min}`;
+        } else if (input.max && numValue > parseFloat(input.max)) {
+            isValid = false;
+            errorMessage = `${fieldName} cannot exceed ${input.max}`;
+        }
+    }
+    
+    // Email validation
+    if (input.type === 'email' && value) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(value)) {
+            isValid = false;
+            errorMessage = 'Please enter a valid email address';
+        }
+    }
+    
+    // Required field validation
+    if (input.required && !value) {
+        isValid = false;
+        errorMessage = `${fieldName} is required`;
+    }
+    
+    // Apply validation state
+    if (isValid) {
+        input.classList.add('success');
+        this.clearFieldError(input);
+    } else {
+        input.classList.add('error');
+        this.showFieldError(input, errorMessage);
+    }
+    
+    return isValid;
+}
+
+// Validate all settings before saving
+validateAllSettings() {
+    console.log('🔍 Validating all settings...');
+    
+    const inputs = document.querySelectorAll('.setting-input');
+    let allValid = true;
+    
+    inputs.forEach(input => {
+        if (!this.validateSettingInput(input)) {
+            allValid = false;
+            
+            // Scroll to first error
+            if (allValid === false) { // Only scroll to first error
+                input.scrollIntoView({ 
+                    behavior: 'smooth', 
+                    block: 'center' 
+                });
+                input.focus();
+            }
+        }
+    });
+    
+    if (!allValid) {
+        this.showToast('Please fix the validation errors before saving', 'error');
+    } else {
+        console.log('✅ All settings validated successfully');
+    }
+    
+    return allValid;
+}
+
+// Show field-specific error
+showFieldError(input, message) {
+    // Remove existing error
+    this.clearFieldError(input);
+    
+    // Create error element
+    const errorElement = document.createElement('div');
+    errorElement.className = 'field-error';
+    errorElement.innerHTML = `
+        <i class="fas fa-exclamation-circle"></i>
+        <span>${message}</span>
+    `;
+    
+    // Insert after input
+    input.parentNode.appendChild(errorElement);
+}
+
+// Clear field error
+clearFieldError(input) {
+    const existingError = input.parentNode.querySelector('.field-error');
+    if (existingError) {
+        existingError.remove();
+    }
+}
+
+
 autoSaveSetting(input) {
     console.log('💾 Auto-saving setting change...', input.name || input.id);
     // This would typically save to backend
