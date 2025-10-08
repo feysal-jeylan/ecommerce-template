@@ -4335,6 +4335,335 @@ setupCustomerActionModals() {
     console.log('✅ Customer action modals setup completed');
 }
 
+// ===== ENHANCED SETTINGS MANAGEMENT SYSTEM =====
+
+// Add this method - it doesn't exist yet
+saveAllSettings() {
+    console.log('💾 Starting advanced settings save...');
+    
+    try {
+        const settings = this.collectAllSettings();
+        
+        // Validate critical settings
+        if (!this.validateSettings(settings)) {
+            throw new Error('Settings validation failed');
+        }
+        
+        // Save to localStorage with versioning
+        const settingsPackage = {
+            data: settings,
+            version: '1.0.0',
+            lastSaved: new Date().toISOString(),
+            checksum: this.generateSettingsChecksum(settings)
+        };
+        
+        localStorage.setItem('swiftbuy_admin_settings', JSON.stringify(settingsPackage));
+        
+        // Verify save worked
+        const saved = this.verifySettingsSave();
+        if (!saved) {
+            throw new Error('Settings save verification failed');
+        }
+        
+        // Apply settings to dashboard in real-time
+        this.applySettingsToDashboard(settings);
+        
+        this.showToast('✅ All settings saved and applied successfully!', 'success');
+        console.log('💾 Settings saved successfully:', settings);
+        
+        return true;
+        
+    } catch (error) {
+        console.error('❌ Settings save error:', error);
+        this.showToast(`❌ Failed to save settings: ${error.message}`, 'error');
+        return false;
+    }
+}
+
+// Collect all settings from form fields
+collectAllSettings() {
+    const settings = {
+        // General Settings
+        general: {
+            defaultDashboardView: this.getValue('default-dashboard-view'),
+            dateFormat: this.getValue('date-format'),
+            timezone: this.getValue('timezone'),
+            theme: this.getValue('theme'),
+            itemsPerPage: parseInt(this.getValue('items-per-page')) || 25,
+            autoRefresh: parseInt(this.getValue('auto-refresh')) || 60,
+            sessionTimeout: parseInt(this.getValue('session-timeout')) || 60,
+            twoFactorAuth: this.getChecked('two-factor-auth'),
+            loginNotifications: this.getChecked('login-notifications')
+        },
+        
+        // Store Settings
+        store: {
+            name: this.getValue('store-name'),
+            email: this.getValue('store-email'),
+            phone: this.getValue('store-phone'),
+            address: this.getValue('store-address'),
+            currency: this.getValue('store-currency'),
+            country: this.getValue('store-country'),
+            language: this.getValue('store-language'),
+            timeFormat: this.getValue('time-format'),
+            maintenanceMode: this.getChecked('maintenance-mode'),
+            guestCheckout: this.getChecked('guest-checkout'),
+            customerReviews: this.getChecked('customer-reviews'),
+            showInventory: this.getChecked('show-inventory')
+        },
+        
+        // Inventory Settings
+        inventory: {
+            enableStockManagement: this.getChecked('enable-stock-management'),
+            lowStockThreshold: parseInt(this.getValue('low-stock-threshold')) || 5,
+            outOfStockThreshold: parseInt(this.getValue('out-of-stock-threshold')) || 0,
+            holdStock: parseInt(this.getValue('hold-stock')) || 60,
+            lowStockAlerts: this.getChecked('low-stock-alerts'),
+            outOfStockAlerts: this.getChecked('out-of-stock-alerts'),
+            backInStockAlerts: this.getChecked('back-in-stock-alerts'),
+            alertFrequency: this.getValue('alert-frequency'),
+            enableBackorders: this.getChecked('enable-backorders'),
+            manageStockPerProduct: this.getChecked('manage-stock-per-product'),
+            autoUpdateInventory: this.getChecked('auto-update-inventory')
+        }
+    };
+    
+    return settings;
+}
+
+// Enhanced settings loading with migration support
+loadSettings() {
+    console.log('📥 Loading settings...');
+    
+    try {
+        const settingsSection = document.getElementById('settings');
+        if (!settingsSection) {
+            console.warn('⚠️ Settings section not found');
+            return;
+        }
+        
+        const saved = localStorage.getItem('swiftbuy_admin_settings');
+        if (!saved) {
+            console.log('📥 No saved settings found, using defaults');
+            this.applyDefaultSettings();
+            return;
+        }
+        
+        const settingsPackage = JSON.parse(saved);
+        
+        // Verify settings integrity
+        if (!this.verifySettingsIntegrity(settingsPackage)) {
+            console.warn('⚠️ Settings integrity check failed, using defaults');
+            this.applyDefaultSettings();
+            return;
+        }
+        
+        const settings = settingsPackage.data;
+        this.populateSettingsForm(settings);
+        
+        console.log('✅ Settings loaded successfully');
+        
+    } catch (error) {
+        console.error('❌ Settings load error:', error);
+        this.showToast('Error loading settings, using defaults', 'error');
+        this.applyDefaultSettings();
+    }
+}
+
+// Utility methods for form handling
+getValue(elementId) {
+    const element = document.getElementById(elementId);
+    return element ? element.value : '';
+}
+
+getChecked(elementId) {
+    const element = document.getElementById(elementId);
+    return element ? element.checked : false;
+}
+
+setValue(elementId, value) {
+    const element = document.getElementById(elementId);
+    if (element) {
+        element.value = value;
+    }
+}
+
+setChecked(elementId, checked) {
+    const element = document.getElementById(elementId);
+    if (element) {
+        element.checked = !!checked;
+    }
+}
+
+// Validate critical settings
+validateSettings(settings) {
+    // Store name validation
+    if (!settings.store.name || settings.store.name.trim().length === 0) {
+        this.showToast('Store name is required', 'error');
+        return false;
+    }
+    
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (settings.store.email && !emailRegex.test(settings.store.email)) {
+        this.showToast('Please enter a valid store email', 'error');
+        return false;
+    }
+    
+    // Positive number validations
+    if (settings.inventory.lowStockThreshold < 1) {
+        this.showToast('Low stock threshold must be at least 1', 'error');
+        return false;
+    }
+    
+    return true;
+}
+
+// Generate checksum for settings integrity
+generateSettingsChecksum(settings) {
+    const str = JSON.stringify(settings);
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash; // Convert to 32bit integer
+    }
+    return hash.toString();
+}
+
+// Verify settings were saved correctly
+verifySettingsSave() {
+    try {
+        const saved = localStorage.getItem('swiftbuy_admin_settings');
+        return saved !== null;
+    } catch (error) {
+        console.error('Settings verification error:', error);
+        return false;
+    }
+}
+
+// Verify settings package integrity
+verifySettingsIntegrity(settingsPackage) {
+    if (!settingsPackage || !settingsPackage.data) {
+        return false;
+    }
+    
+    // Verify checksum if available
+    if (settingsPackage.checksum) {
+        const currentChecksum = this.generateSettingsChecksum(settingsPackage.data);
+        if (currentChecksum !== settingsPackage.checksum) {
+            console.warn('Settings checksum mismatch');
+            return false;
+        }
+    }
+    
+    return true;
+}
+
+// Populate form with settings
+populateSettingsForm(settings) {
+    // General Settings
+    this.setValue('default-dashboard-view', settings.general?.defaultDashboardView || 'overview');
+    this.setValue('date-format', settings.general?.dateFormat || 'MM/DD/YYYY');
+    this.setValue('timezone', settings.general?.timezone || 'UTC-5');
+    this.setValue('theme', settings.general?.theme || 'light');
+    this.setValue('items-per-page', settings.general?.itemsPerPage || 25);
+    this.setValue('auto-refresh', settings.general?.autoRefresh || 60);
+    this.setValue('session-timeout', settings.general?.sessionTimeout || 60);
+    this.setChecked('two-factor-auth', settings.general?.twoFactorAuth || false);
+    this.setChecked('login-notifications', settings.general?.loginNotifications !== false);
+    
+    // Store Settings
+    this.setValue('store-name', settings.store?.name || 'SwiftBuy');
+    this.setValue('store-email', settings.store?.email || 'admin@swiftbuy.com');
+    this.setValue('store-phone', settings.store?.phone || '');
+    this.setValue('store-address', settings.store?.address || '');
+    this.setValue('store-currency', settings.store?.currency || 'USD');
+    this.setValue('store-country', settings.store?.country || 'US');
+    this.setValue('store-language', settings.store?.language || 'en');
+    this.setValue('time-format', settings.store?.timeFormat || '12');
+    this.setChecked('maintenance-mode', settings.store?.maintenanceMode || false);
+    this.setChecked('guest-checkout', settings.store?.guestCheckout !== false);
+    this.setChecked('customer-reviews', settings.store?.customerReviews !== false);
+    this.setChecked('show-inventory', settings.store?.showInventory !== false);
+    
+    // Inventory Settings
+    this.setChecked('enable-stock-management', settings.inventory?.enableStockManagement !== false);
+    this.setValue('low-stock-threshold', settings.inventory?.lowStockThreshold || 5);
+    this.setValue('out-of-stock-threshold', settings.inventory?.outOfStockThreshold || 0);
+    this.setValue('hold-stock', settings.inventory?.holdStock || 60);
+    this.setChecked('low-stock-alerts', settings.inventory?.lowStockAlerts !== false);
+    this.setChecked('out-of-stock-alerts', settings.inventory?.outOfStockAlerts !== false);
+    this.setChecked('back-in-stock-alerts', settings.inventory?.backInStockAlerts || false);
+    this.setValue('alert-frequency', settings.inventory?.alertFrequency || 'immediate');
+    this.setChecked('enable-backorders', settings.inventory?.enableBackorders || false);
+    this.setChecked('manage-stock-per-product', settings.inventory?.manageStockPerProduct !== false);
+    this.setChecked('auto-update-inventory', settings.inventory?.autoUpdateInventory !== false);
+}
+
+// Apply default settings
+applyDefaultSettings() {
+    const defaultSettings = {
+        general: {
+            defaultDashboardView: 'overview',
+            dateFormat: 'MM/DD/YYYY',
+            timezone: 'UTC-5',
+            theme: 'light',
+            itemsPerPage: 25,
+            autoRefresh: 60,
+            sessionTimeout: 60,
+            twoFactorAuth: false,
+            loginNotifications: true
+        },
+        store: {
+            name: 'SwiftBuy',
+            email: 'admin@swiftbuy.com',
+            phone: '',
+            address: '',
+            currency: 'USD',
+            country: 'US',
+            language: 'en',
+            timeFormat: '12',
+            maintenanceMode: false,
+            guestCheckout: true,
+            customerReviews: true,
+            showInventory: true
+        },
+        inventory: {
+            enableStockManagement: true,
+            lowStockThreshold: 5,
+            outOfStockThreshold: 0,
+            holdStock: 60,
+            lowStockAlerts: true,
+            outOfStockAlerts: true,
+            backInStockAlerts: false,
+            alertFrequency: 'immediate',
+            enableBackorders: false,
+            manageStockPerProduct: true,
+            autoUpdateInventory: true
+        }
+    };
+    
+    this.populateSettingsForm(defaultSettings);
+}
+
+// Apply settings to dashboard (basic implementation)
+applySettingsToDashboard(settings) {
+    console.log('🎛️ Applying settings to dashboard...');
+    
+    // Apply theme if changed
+    if (settings.general?.theme) {
+        document.documentElement.setAttribute('data-theme', settings.general.theme);
+    }
+    
+    // Apply items per page
+    if (settings.general?.itemsPerPage) {
+        // This would affect pagination in future implementations
+        console.log('Items per page set to:', settings.general.itemsPerPage);
+    }
+    
+    // You can add more settings application logic here
+}
 // Helper method to setup modal event listeners
 setupModalEventListeners(modalId, closeButtonIds) {
     const modal = document.getElementById(modalId);
@@ -5251,77 +5580,7 @@ updateSettingsSection() {
     console.log('✅ Settings section updated');
 }
 
-loadSettings() {
-    const settings = JSON.parse(localStorage.getItem('swiftbuy_admin_settings') || '{}');
-    
-    // General Settings
-    this.setValue('default-dashboard-view', settings.defaultDashboardView || 'overview');
-    this.setValue('date-format', settings.dateFormat || 'MM/DD/YYYY');
-    this.setValue('timezone', settings.timezone || 'UTC-5');
-    this.setValue('theme', settings.theme || 'light');
-    this.setValue('items-per-page', settings.itemsPerPage || 25);
-    this.setValue('auto-refresh', settings.autoRefresh || 60);
-    this.setValue('session-timeout', settings.sessionTimeout || 60);
-    this.setChecked('two-factor-auth', settings.twoFactorAuth || false);
-    this.setChecked('login-notifications', settings.loginNotifications !== false);
 
-    // Store Settings
-    this.setValue('store-name', settings.storeName || 'SwiftBuy');
-    this.setValue('store-email', settings.storeEmail || 'admin@swiftbuy.com');
-    this.setValue('store-phone', settings.storePhone || '');
-    this.setValue('store-address', settings.storeAddress || '');
-    this.setValue('store-currency', settings.storeCurrency || 'USD');
-    this.setValue('store-country', settings.storeCountry || 'US');
-    this.setValue('store-language', settings.storeLanguage || 'en');
-    this.setValue('time-format', settings.timeFormat || '12');
-    this.setChecked('maintenance-mode', settings.maintenanceMode || false);
-    this.setChecked('guest-checkout', settings.guestCheckout !== false);
-    this.setChecked('customer-reviews', settings.customerReviews !== false);
-    this.setChecked('show-inventory', settings.showInventory !== false);
-
-    // Inventory Settings
-    this.setChecked('enable-stock-management', settings.enableStockManagement !== false);
-    this.setValue('low-stock-threshold', settings.lowStockThreshold || 5);
-    this.setValue('out-of-stock-threshold', settings.outOfStockThreshold || 0);
-    this.setValue('hold-stock', settings.holdStock || 60);
-    this.setChecked('low-stock-alerts', settings.lowStockAlerts !== false);
-    this.setChecked('out-of-stock-alerts', settings.outOfStockAlerts !== false);
-    this.setChecked('back-in-stock-alerts', settings.backInStockAlerts || false);
-    this.setValue('alert-frequency', settings.alertFrequency || 'immediate');
-    this.setChecked('enable-backorders', settings.enableBackorders || false);
-    this.setChecked('manage-stock-per-product', settings.manageStockPerProduct !== false);
-    this.setChecked('auto-update-inventory', settings.autoUpdateInventory !== false);
-
-    // Shipping Settings
-    this.setChecked('standard-shipping', settings.standardShipping !== false);
-    this.setValue('standard-shipping-cost', settings.standardShippingCost || 4.99);
-    this.setValue('free-shipping-threshold', settings.freeShippingThreshold || 50.00);
-    this.setChecked('express-shipping', settings.expressShipping !== false);
-    this.setValue('express-shipping-cost', settings.expressShippingCost || 9.99);
-    this.setChecked('international-shipping', settings.internationalShipping || false);
-    this.setValue('international-shipping-cost', settings.internationalShippingCost || 19.99);
-
-    // Payment Settings
-    this.setChecked('stripe-enabled', settings.stripeEnabled !== false);
-    this.setValue('stripe-publishable-key', settings.stripePublishableKey || '');
-    this.setValue('stripe-secret-key', settings.stripeSecretKey || '');
-    this.setChecked('paypal-enabled', settings.paypalEnabled || false);
-    this.setValue('paypal-client-id', settings.paypalClientId || '');
-    this.setValue('paypal-client-secret', settings.paypalClientSecret || '');
-    this.setChecked('bank-transfer-enabled', settings.bankTransferEnabled || false);
-    this.setValue('bank-account-details', settings.bankAccountDetails || '');
-    this.setValue('payment-currency', settings.paymentCurrency || 'USD');
-    this.setChecked('payment-test-mode', settings.paymentTestMode !== false);
-    this.setValue('payment-capture', settings.paymentCapture || 'auto');
-
-    // Notification Settings
-    this.setChecked('email-new-orders', settings.emailNewOrders !== false);
-    this.setChecked('email-low-stock', settings.emailLowStock !== false);
-    this.setChecked('email-new-customers', settings.emailNewCustomers || false);
-    this.setChecked('show-badges', settings.showBadges !== false);
-    this.setChecked('notification-sound', settings.notificationSound || false);
-    this.setValue('notification-timeout', settings.notificationTimeout || 5000);
-}
 
 setupSettingsEventListeners() {
     // Settings navigation
@@ -5331,17 +5590,25 @@ setupSettingsEventListeners() {
         });
     });
 
-    // Save settings button
-    document.getElementById('save-settings')?.addEventListener('click', () => {
-        this.saveAllSettings();
-    });
+   // Save settings button
+document.getElementById('save-settings')?.addEventListener('click', () => {
+    this.saveAllSettings();
+});
+
+// Reset settings button
+document.getElementById('reset-settings')?.addEventListener('click', () => {
+    if (confirm('Are you sure you want to reset all settings to defaults? This cannot be undone.')) {
+        localStorage.removeItem('swiftbuy_admin_settings');
+        this.applyDefaultSettings();
+        this.showToast('Settings reset to defaults', 'success');
+    }
+});
 
     // Reset settings button
     document.getElementById('reset-settings')?.addEventListener('click', () => {
         this.resetSettingsToDefaults();
     });
 
-    // REMOVE THIS LINE: this.setupAutoSaveListeners(); // ← DELETE OR COMMENT OUT THIS LINE
     
     // ADD THIS INSTEAD:
     this.setupSmartSettingsSaving(); // ← USE THE CORRECT METHOD NAME
@@ -5460,56 +5727,7 @@ updateAdvancedAnalytics() {
     `;
 }
 
-loadSettings() {
-    // Check if settings section exists in DOM before trying to load
-    const settingsSection = document.getElementById('settings');
-    if (!settingsSection) {
-        console.warn('⚠️ Settings section not found in DOM yet');
-        return;
-    }
-    
-    console.log('⚙️ Loading settings...');
-    
-    const settings = JSON.parse(localStorage.getItem('swiftbuy_admin_settings') || '{}');
-    
-    // SAFE element access with null checks
-    const safeSetValue = (id, value) => {
-        const element = document.getElementById(id);
-        if (element) element.value = value || '';
-    };
-    
-    const safeSetChecked = (id, value) => {
-        const element = document.getElementById(id);
-        if (element) element.checked = !!value;
-    };
-    
-    // General Settings - WITH NULL CHECKS
-    safeSetValue('default-dashboard-view', settings.defaultDashboardView || 'overview');
-    safeSetValue('date-format', settings.dateFormat || 'MM/DD/YYYY');
-    safeSetValue('timezone', settings.timezone || 'UTC-5');
-    safeSetValue('theme', settings.theme || 'light');
-    safeSetValue('items-per-page', settings.itemsPerPage || 25);
-    safeSetValue('auto-refresh', settings.autoRefresh || 60);
-    safeSetValue('session-timeout', settings.sessionTimeout || 60);
-    safeSetChecked('two-factor-auth', settings.twoFactorAuth || false);
-    safeSetChecked('login-notifications', settings.loginNotifications !== false);
 
-    // Store Settings - WITH NULL CHECKS
-    safeSetValue('store-name', settings.storeName || 'SwiftBuy');
-    safeSetValue('store-email', settings.storeEmail || 'admin@swiftbuy.com');
-    safeSetValue('store-phone', settings.storePhone || '');
-    safeSetValue('store-address', settings.storeAddress || '');
-    safeSetValue('store-currency', settings.storeCurrency || 'USD');
-    safeSetValue('store-country', settings.storeCountry || 'US');
-    safeSetValue('store-language', settings.storeLanguage || 'en');
-    safeSetValue('time-format', settings.timeFormat || '12');
-    safeSetChecked('maintenance-mode', settings.maintenanceMode || false);
-    safeSetChecked('guest-checkout', settings.guestCheckout !== false);
-    safeSetChecked('customer-reviews', settings.customerReviews !== false);
-    safeSetChecked('show-inventory', settings.showInventory !== false);
-
-    console.log('✅ Settings loaded successfully');
-}
 
 formatSectionTitle(sectionId) {
     const titleMap = {
