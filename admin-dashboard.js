@@ -172,6 +172,59 @@ clearAllData() {
     }
 }
 
+// ===== CHART RESPONSIVENESS HANDLERS =====
+setupChartResponsiveness() {
+    // Handle window resize for charts
+    let resizeTimeout;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(() => {
+            if (this.currentSection === 'analytics') {
+                this.refreshChartsOnResize();
+            }
+        }, 250);
+    });
+    
+    // Initialize chart responsiveness
+    this.initializeResponsiveCharts();
+}
+
+initializeResponsiveCharts() {
+    // Set initial chart sizes based on viewport
+    this.updateChartSizes();
+}
+
+refreshChartsOnResize() {
+    console.log('🔄 Refreshing charts for new viewport size...');
+    
+    // Destroy and recreate charts
+    if (this.revenueAnalyticsChart) {
+        this.revenueAnalyticsChart.destroy();
+        this.renderRevenueAnalyticsChart();
+    }
+    
+    if (this.categoryChart) {
+        this.categoryChart.destroy();
+        this.renderCategoryChart();
+    }
+    
+    if (this.trafficChart) {
+        this.trafficChart.destroy();
+        this.renderTrafficChart();
+    }
+    
+    this.showToast('Charts optimized for current screen size');
+}
+
+updateChartSizes() {
+    const isMobile = window.innerWidth <= 768;
+    const chartHeight = isMobile ? 200 : 300;
+    
+    // Update chart container heights
+    document.querySelectorAll('.chart-card canvas').forEach(canvas => {
+        canvas.style.height = `${chartHeight}px`;
+    });
+}
 
 // Add this method to analyze storage usage
 analyzeStorage() {
@@ -295,6 +348,7 @@ init() {
     this.loadAllData();
     this.setupEventListeners();
     this.setupRealTimeUpdates();
+    this.setupChartResponsiveness(); // ← ADD THIS LINE
     this.updateDashboard();
     this.setupAddProductModal();
     this.setupQuickEditModal();
