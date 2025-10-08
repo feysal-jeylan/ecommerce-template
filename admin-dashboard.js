@@ -6107,17 +6107,41 @@ initializeSettingsTabs() {
 }
 
 switchSettingsTab(tabId) {
-    // Update navigation
-    document.querySelectorAll('.nav-item').forEach(item => {
-        item.classList.remove('active');
-    });
-    document.querySelector(`[data-tab="${tabId}"]`).classList.add('active');
+    console.log('🔧 Switching to settings tab:', tabId);
+    
+    // Validate tab exists before proceeding
+    const tabElement = document.getElementById(`${tabId}-tab`);
+    if (!tabElement) {
+        console.error('❌ Settings tab not found:', `${tabId}-tab`);
+        this.showToast(`Settings tab "${tabId}" not available`, 'error');
+        return;
+    }
 
-    // Update content
-    document.querySelectorAll('.settings-tab').forEach(tab => {
-        tab.classList.remove('active');
+    // Update navigation - safely handle missing elements
+    document.querySelectorAll('.nav-item[data-tab]').forEach(item => {
+        if (item && item.classList) {
+            item.classList.remove('active');
+        }
     });
-    document.getElementById(`${tabId}-tab`).classList.add('active');
+    
+    const navItem = document.querySelector(`[data-tab="${tabId}"]`);
+    if (navItem && navItem.classList) {
+        navItem.classList.add('active');
+    } else {
+        console.warn('⚠️ Settings nav item not found:', tabId);
+    }
+
+    // Update content - safely handle missing elements
+    document.querySelectorAll('.settings-tab').forEach(tab => {
+        if (tab && tab.classList) {
+            tab.classList.remove('active');
+        }
+    });
+    
+    if (tabElement && tabElement.classList) {
+        tabElement.classList.add('active');
+        console.log('✅ Settings tab activated:', tabId);
+    }
 }
 
 updateFunnelChart() {
