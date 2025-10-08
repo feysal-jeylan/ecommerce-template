@@ -5234,9 +5234,21 @@ cleanupAnalytics() {
     }
 }
 updateSettingsSection() {
+    console.log('⚙️ Updating settings section...');
+    
+    // Check if settings section exists
+    const settingsSection = document.getElementById('settings');
+    if (!settingsSection) {
+        console.error('❌ Settings section not found in DOM');
+        return;
+    }
+    
+    // Load settings only if section is visible
     this.loadSettings();
     this.setupSettingsEventListeners();
     this.initializeSettingsTabs();
+    
+    console.log('✅ Settings section updated');
 }
 
 loadSettings() {
@@ -5449,20 +5461,54 @@ updateAdvancedAnalytics() {
 }
 
 loadSettings() {
-    const container = document.getElementById('settings-section');
-    if (!container) {
-        console.warn('Settings section not found in DOM');
+    // Check if settings section exists in DOM before trying to load
+    const settingsSection = document.getElementById('settings');
+    if (!settingsSection) {
+        console.warn('⚠️ Settings section not found in DOM yet');
         return;
     }
     
-    container.innerHTML = `
-        <div class="section-header">
-            <h2>System Settings</h2>
-        </div>
-        <div class="settings-container">
-            <p>System configuration interface will be implemented here.</p>
-        </div>
-    `;
+    console.log('⚙️ Loading settings...');
+    
+    const settings = JSON.parse(localStorage.getItem('swiftbuy_admin_settings') || '{}');
+    
+    // SAFE element access with null checks
+    const safeSetValue = (id, value) => {
+        const element = document.getElementById(id);
+        if (element) element.value = value || '';
+    };
+    
+    const safeSetChecked = (id, value) => {
+        const element = document.getElementById(id);
+        if (element) element.checked = !!value;
+    };
+    
+    // General Settings - WITH NULL CHECKS
+    safeSetValue('default-dashboard-view', settings.defaultDashboardView || 'overview');
+    safeSetValue('date-format', settings.dateFormat || 'MM/DD/YYYY');
+    safeSetValue('timezone', settings.timezone || 'UTC-5');
+    safeSetValue('theme', settings.theme || 'light');
+    safeSetValue('items-per-page', settings.itemsPerPage || 25);
+    safeSetValue('auto-refresh', settings.autoRefresh || 60);
+    safeSetValue('session-timeout', settings.sessionTimeout || 60);
+    safeSetChecked('two-factor-auth', settings.twoFactorAuth || false);
+    safeSetChecked('login-notifications', settings.loginNotifications !== false);
+
+    // Store Settings - WITH NULL CHECKS
+    safeSetValue('store-name', settings.storeName || 'SwiftBuy');
+    safeSetValue('store-email', settings.storeEmail || 'admin@swiftbuy.com');
+    safeSetValue('store-phone', settings.storePhone || '');
+    safeSetValue('store-address', settings.storeAddress || '');
+    safeSetValue('store-currency', settings.storeCurrency || 'USD');
+    safeSetValue('store-country', settings.storeCountry || 'US');
+    safeSetValue('store-language', settings.storeLanguage || 'en');
+    safeSetValue('time-format', settings.timeFormat || '12');
+    safeSetChecked('maintenance-mode', settings.maintenanceMode || false);
+    safeSetChecked('guest-checkout', settings.guestCheckout !== false);
+    safeSetChecked('customer-reviews', settings.customerReviews !== false);
+    safeSetChecked('show-inventory', settings.showInventory !== false);
+
+    console.log('✅ Settings loaded successfully');
 }
 
 formatSectionTitle(sectionId) {
