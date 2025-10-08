@@ -1153,10 +1153,10 @@ a:focus-visible {
     font-size: 0.9rem;
 }
 
-/* Settings Grid */
+/* Advanced responsive settings grid */
 .settings-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
     gap: 1.5rem;
 }
 
@@ -1166,6 +1166,41 @@ a:focus-visible {
     border-radius: var(--admin-radius);
     box-shadow: var(--admin-shadow);
     border: 1px solid var(--admin-border);
+    break-inside: avoid;
+}
+
+.settings-card h4 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--admin-text);
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--admin-border);
+}
+
+/* Tablet: 2-column grid */
+@media (min-width: 768px) {
+    .settings-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* Desktop: 3-column grid for larger cards */
+@media (min-width: 1200px) {
+    .settings-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .settings-card {
+        padding: 1.75rem;
+    }
+}
+
+/* Large desktop: 3-column grid */
+@media (min-width: 1400px) {
+    .settings-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
 }
 
 .setting-item {
@@ -2983,9 +3018,9 @@ input[type="checkbox"] {
 }
 
 .settings-content {
+    order: 1; /* Mobile: content comes first */
     min-height: 600px;
 }
-
 .settings-tab {
     display: none;
     animation: fadeIn 0.3s ease-out;
@@ -3214,6 +3249,38 @@ input[type="checkbox"] {
     font-size: 1.2rem;
 }
 
+
+/* Desktop layout */
+@media (min-width: 1024px) {
+    .settings-layout {
+        display: grid;
+        grid-template-columns: 280px 1fr;
+        gap: 2rem;
+        flex-direction: row;
+    }
+    
+    .settings-sidebar {
+        order: 1;
+        position: sticky;
+        top: 2rem;
+        height: fit-content;
+        padding: 1.5rem;
+    }
+    
+    .settings-nav {
+        flex-direction: column;
+        overflow-x: visible;
+        padding-bottom: 0;
+    }
+    
+    .settings-content {
+        order: 2;
+    }
+    
+    .nav-item {
+        min-width: 100%;
+    }
+}
 /* Responsive Design */
 @media (max-width: 1024px) {
     .settings-layout {
