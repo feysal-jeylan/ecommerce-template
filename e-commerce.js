@@ -426,21 +426,24 @@ async function initializeProducts() {
     console.log('🔄 Initializing products...');
     
     try {
+        // Ensure products are available globally with fallback
+        let loadedProducts = [];
+        
         // Try localStorage first
         const savedProducts = localStorage.getItem('swiftbuy_products');
         if (savedProducts) {
-            products = JSON.parse(savedProducts);
-            console.log(`📦 Loaded ${products.length} products from localStorage`);
+            loadedProducts = JSON.parse(savedProducts);
+            console.log(`📦 Loaded ${loadedProducts.length} products from localStorage`);
         } else {
             // Fallback to module
             try {
                 const module = await import('./products.js');
                 if (module && module.products) {
-                    products = module.products;
-                    console.log(`📦 Loaded ${products.length} products from module`);
+                    loadedProducts = module.products;
+                    console.log(`📦 Loaded ${loadedProducts.length} products from module`);
                     
-                    // Enhance products
-                    products = products.map(product => ({
+                    // Enhance products with default data
+                    loadedProducts = loadedProducts.map(product => ({
                         ...product,
                         rating: product.rating || { 
                             stars: (Math.random() * 1 + 4).toFixed(1),
@@ -457,24 +460,36 @@ async function initializeProducts() {
                         isTrending: product.isTrending || false
                     }));
                     
-                    localStorage.setItem('swiftbuy_products', JSON.stringify(products));
+                    localStorage.setItem('swiftbuy_products', JSON.stringify(loadedProducts));
                 }
             } catch (moduleError) {
                 console.warn('Products module not available, using fallback data', moduleError);
                 loadFallbackProducts();
+                loadedProducts = products; // Use the global products from fallback
             }
         }
         
+        // CRITICAL FIX: Ensure products are properly assigned to global variables
+        products = loadedProducts;
+        window.products = products; // Ensure global availability
+        
         if (!products || products.length === 0) {
+            console.warn('⚠️ Products array empty, loading fallback...');
             loadFallbackProducts();
+            products = window.products; // Re-assign from fallback
         }
         
         console.log(`✅ Successfully initialized ${products.length} products`);
+        console.log('🔍 Global products check:', window.products?.length, 'products available');
+        
         return true;
         
     } catch (error) {
         console.error('❌ Failed to initialize products:', error);
-        loadFallbackProducts();
+        // Ensure we have some products even if initialization fails
+        if (!products || products.length === 0) {
+            loadFallbackProducts();
+        }
         return false;
     }
 }
@@ -482,7 +497,7 @@ async function initializeProducts() {
 function loadFallbackProducts() {
     console.log('🔄 Loading fallback products...');
     
-    products = [
+    const fallbackProducts = [
         {
             id: "101",
             name: "Wireless Bluetooth Headphones",
@@ -547,8 +562,12 @@ function loadFallbackProducts() {
         }
     ];
     
-    localStorage.setItem('swiftbuy_products', JSON.stringify(products));
-    console.log(`✅ Loaded ${products.length} fallback products`);
+    // CRITICAL: Assign to both local and global variables
+    products = fallbackProducts;
+    window.products = fallbackProducts;
+    
+    localStorage.setItem('swiftbuy_products', JSON.stringify(fallbackProducts));
+    console.log(`✅ Loaded ${fallbackProducts.length} fallback products`);
 }
 
 // ===== SEARCH FUNCTIONALITY =====
@@ -3015,30 +3034,36 @@ class DynamicPricingEngine {
         }
     }
 
-    calculateOptimalPrice(product, userPersona) {
-        const basePrice = product.price;
-        const demandFactor = this.getDemandFactor(product.id);
-        const timeFactor = this.getTimeFactor();
-        const userFactor = this.getUserPriceFactor(userPersona);
-        
-        // Advanced pricing algorithm
-        let optimalPrice = basePrice;
-        
-        // Demand-based adjustment (±15%)
-        optimalPrice *= (1 + (demandFactor * 0.15));
-        
-        // Time-based adjustment (±10%)
-        optimalPrice *= (1 + (timeFactor * 0.10));
-        
-        // User-specific adjustment (±20%)
-        optimalPrice *= (1 + (userFactor * 0.20));
-        
-        // Ensure minimum and maximum bounds
-        const minPrice = basePrice * 0.7;  // 30% minimum discount
-        const maxPrice = basePrice * 1.5;  // 50% maximum premium
-        
-        return Math.max(minPrice, Math.min(maxPrice, optimalPrice));
+calculateOptimalPrice(product, userPersona) {
+    // Safety check for product parameter
+    if (!product || typeof product.price !== 'number') {
+        console.warn('💰 Dynamic Pricing: Invalid product data', product);
+        return product?.price || 100; // Return original price or default
     }
+    
+    const basePrice = product.price;
+    const demandFactor = this.getDemandFactor(product.id);
+    const timeFactor = this.getTimeFactor();
+    const userFactor = this.getUserPriceFactor(userPersona);
+    
+    // Advanced pricing algorithm
+    let optimalPrice = basePrice;
+    
+    // Demand-based adjustment (±15%)
+    optimalPrice *= (1 + (demandFactor * 0.15));
+    
+    // Time-based adjustment (±10%)
+    optimalPrice *= (1 + (timeFactor * 0.10));
+    
+    // User-specific adjustment (±20%)
+    optimalPrice *= (1 + (userFactor * 0.20));
+    
+    // Ensure minimum and maximum bounds
+    const minPrice = basePrice * 0.7;  // 30% minimum discount
+    const maxPrice = basePrice * 1.5;  // 50% maximum premium
+    
+    return Math.max(minPrice, Math.min(maxPrice, optimalPrice));
+}
 
  getDemandFactor(productId) {
     // Robust demand factor calculation with fallbacks
@@ -3239,12 +3264,20 @@ class PersonalizedRankingEngine {
 
 // ===== INITIALIZE AI SYSTEMS =====
 function initAIPersonalization() {
-    // Initialize AI engines
+    // Safety check - ensure products are available
+    if (!window.products || window.products.length === 0) {
+        console.warn('🤖 AI Personalization: Products not available, delaying initialization...');
+        setTimeout(initAIPersonalization, 1000);
+        return;
+    }
+    
+    console.log('🧠 AI Personalization: Starting with', window.products.length, 'products');
+    
+    // Rest of existing initialization code...
     window.userAnalytics = new UserBehaviorAnalytics();
     window.dynamicPricing = new DynamicPricingEngine();
     window.personalizedRanking = new PersonalizedRankingEngine();
 
-    // Enhance existing systems with AI
     enhanceSearchWithAI();
     enhanceRecommendationsWithAI();
     enhanceProductDisplayWithAI();
