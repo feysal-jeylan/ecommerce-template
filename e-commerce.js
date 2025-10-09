@@ -3358,42 +3358,116 @@ setTimeout(() => {
 
 // ===== AI-POWERED BADGES SYSTEM =====
 function addAIPoweredBadges() {
-    console.log('🎯 addAIPoweredBadges function called - IT EXISTS!');
+    console.log('🎯 AI Personalization Badges - Processing...');
     
-    // Simple test version - just add one badge to prove it works
+    // Safety check - ensure AI systems are ready
+    if (!window.userAnalytics || !window.dynamicPricing || !window.personalizedRanking) {
+        console.log('🤖 AI Systems: Waiting for full initialization...');
+        return false;
+    }
+    
     const productCards = document.querySelectorAll('.product-container');
+    let badgesAdded = 0;
     
-    if (productCards.length > 0) {
-        const firstCard = productCards[0];
+    productCards.forEach(card => {
+        const productId = card.dataset.id;
         
         // Remove existing AI badges
-        const existingAIBadge = firstCard.querySelector('.ai-badge');
+        const existingAIBadge = card.querySelector('.ai-badge');
         if (existingAIBadge) {
             existingAIBadge.remove();
         }
         
-        // Add a simple test badge
-        const badge = document.createElement('div');
-        badge.className = 'ai-badge test-badge';
-        badge.innerHTML = '<i class="fas fa-star"></i> AI Test';
-        badge.style.cssText = `
-            position: absolute;
-            top: 12px;
-            right: 12px;
-            background: linear-gradient(135deg, #8b5cf6, #a78bfa);
-            color: white;
-            padding: 6px 10px;
-            border-radius: 8px;
-            font-size: 0.7rem;
-            font-weight: 700;
-            z-index: 3;
-        `;
-        firstCard.appendChild(badge);
-        
-        console.log('✅ Test AI badge added to first product');
-    }
+        try {
+            // Add AI-powered badges with error handling
+            const product = window.products.find(p => p.id === productId);
+            const userPersona = window.userAnalytics.getUserPersona();
+            
+            if (product && userPersona) {
+                // Personalization badge
+                const personalizationScore = window.personalizedRanking.calculatePersonalizationScore(product, userPersona);
+                console.log(`📊 ${product.name}: Personalization Score ${personalizationScore.toFixed(3)}`);
+                
+                if (personalizationScore > 0.7) {
+                    const badge = document.createElement('div');
+                    badge.className = 'ai-badge personalized-badge';
+                    badge.innerHTML = '<i class="fas fa-magic"></i> Perfect for You';
+                    badge.style.cssText = `
+                        position: absolute;
+                        top: 12px;
+                        right: 12px;
+                        background: linear-gradient(135deg, #8b5cf6, #a78bfa);
+                        color: white;
+                        padding: 6px 10px;
+                        border-radius: 8px;
+                        font-size: 0.7rem;
+                        font-weight: 700;
+                        z-index: 3;
+                        box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+                    `;
+                    card.appendChild(badge);
+                    badgesAdded++;
+                    console.log(`✅ Added "Perfect for You" badge to ${product.name}`);
+                }
+                
+                // Dynamic pricing indicator
+                try {
+                    const optimalPrice = window.dynamicPricing.calculateOptimalPrice(product, userPersona);
+                    const priceDiff = optimalPrice - product.price;
+                    
+                    if (priceDiff < -0.01) {
+                        const discountBadge = document.createElement('div');
+                        discountBadge.className = 'ai-badge dynamic-price-badge';
+                        discountBadge.innerHTML = `<i class="fas fa-bolt"></i> AI Price $${optimalPrice.toFixed(2)}`;
+                        discountBadge.style.cssText = `
+                            position: absolute;
+                            bottom: 80px;
+                            left: 12px;
+                            background: linear-gradient(135deg, #10b981, #34d399);
+                            color: white;
+                            padding: 4px 8px;
+                            border-radius: 6px;
+                            font-size: 0.65rem;
+                            font-weight: 700;
+                            z-index: 3;
+                        `;
+                        card.appendChild(discountBadge);
+                        badgesAdded++;
+                        console.log(`💰 AI Price badge: $${product.price} → $${optimalPrice.toFixed(2)}`);
+                    }
+                } catch (pricingError) {
+                    console.warn('💰 AI Pricing: Skipping price badge due to calculation error', pricingError);
+                }
+                
+                // High demand badge
+                const demandFactor = window.dynamicPricing.getDemandFactor(product.id);
+                if (demandFactor > 0.7) {
+                    const demandBadge = document.createElement('div');
+                    demandBadge.className = 'ai-badge high-demand-badge';
+                    demandBadge.innerHTML = '<i class="fas fa-fire"></i> High Demand';
+                    demandBadge.style.cssText = `
+                        position: absolute;
+                        top: 50px;
+                        right: 12px;
+                        background: linear-gradient(135deg, #ef4444, #f59e0b);
+                        color: white;
+                        padding: 4px 8px;
+                        border-radius: 6px;
+                        font-size: 0.65rem;
+                        font-weight: 700;
+                        z-index: 3;
+                    `;
+                    card.appendChild(demandBadge);
+                    badgesAdded++;
+                }
+            }
+        } catch (error) {
+            console.warn('🤖 AI Badges: Error processing product', productId, error);
+        }
+    });
     
-    return true;
+    console.log(`🎯 AI badges processed: ${badgesAdded} badges added to ${productCards.length} products`);
+    return badgesAdded;
 }
 
 console.log('🔍 addAIPoweredBadges function defined:', typeof addAIPoweredBadges);
