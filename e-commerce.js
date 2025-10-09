@@ -56,6 +56,7 @@ import { CART_KEY, loadCart, saveCart, cartItemCount } from './cartModule.js';
 
 // Global state
 let products = [];
+window.products = products; // ADD THIS LINE - makes products available globally
 let inventoryManager = null;
 let recommendationsEngine = null;
 let currentProduct = null;
@@ -2821,3 +2822,531 @@ window.testInventoryBadges = function() {
 };
 
 // END OF SECTION 4 - APPLICATION COMPLETE
+
+// =============================================================================
+// SECTION 5: AI-POWERED PERSONALIZATION ENGINE
+// =============================================================================
+
+// ===== ADVANCED USER BEHAVIOR ANALYTICS =====
+class UserBehaviorAnalytics {
+    constructor() {
+        this.sessionStart = Date.now();
+        this.userActions = [];
+        this.productAffinity = {};
+        this.priceSensitivity = 0.5; // 0-1 scale
+        this.init();
+    }
+
+    init() {
+        this.loadUserProfile();
+        this.startSessionTimer();
+        this.trackUserJourney();
+        console.log('🧠 AI Analytics Engine initialized');
+    }
+
+    loadUserProfile() {
+        const profile = localStorage.getItem('swiftbuy_ai_profile');
+        if (profile) {
+            const data = JSON.parse(profile);
+            Object.assign(this, data);
+        }
+    }
+
+    saveUserProfile() {
+        const profile = {
+            productAffinity: this.productAffinity,
+            priceSensitivity: this.priceSensitivity,
+            lastSession: Date.now()
+        };
+        localStorage.setItem('swiftbuy_ai_profile', JSON.stringify(profile));
+    }
+
+    trackUserJourney() {
+        // Track product views with dwell time
+        let lastProductView = null;
+        let viewStartTime = null;
+
+        document.addEventListener('click', (e) => {
+            const productCard = e.target.closest('.product-container');
+            if (productCard) {
+                const productId = productCard.dataset.id;
+                this.recordAction('product_view', productId);
+                
+                if (lastProductView !== productId) {
+                    if (lastProductView && viewStartTime) {
+                        const dwellTime = Date.now() - viewStartTime;
+                        this.recordDwellTime(lastProductView, dwellTime);
+                    }
+                    lastProductView = productId;
+                    viewStartTime = Date.now();
+                }
+            }
+        });
+
+        // Track scroll behavior
+        let scrollDepth = 0;
+        window.addEventListener('scroll', () => {
+            const newDepth = Math.round((window.scrollY / document.body.scrollHeight) * 100);
+            if (newDepth > scrollDepth) {
+                scrollDepth = newDepth;
+                this.recordAction('scroll_depth', scrollDepth);
+            }
+        });
+
+        // Track search behavior
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                if (e.target.value.length > 2) {
+                    this.recordAction('search_query', e.target.value);
+                }
+            });
+        }
+    }
+
+    recordAction(type, data, value = 1) {
+        this.userActions.push({
+            type,
+            data,
+            value,
+            timestamp: Date.now(),
+            sessionTime: Date.now() - this.sessionStart
+        });
+
+        // Update product affinity
+        if (type === 'product_view' || type === 'add_to_cart') {
+            this.updateProductAffinity(data, value);
+        }
+
+        // Save periodically
+        if (this.userActions.length % 10 === 0) {
+            this.saveUserProfile();
+        }
+    }
+
+    updateProductAffinity(productId, score) {
+        if (!this.productAffinity[productId]) {
+            this.productAffinity[productId] = 0;
+        }
+        this.productAffinity[productId] += score;
+        
+        // Decay older interactions
+        Object.keys(this.productAffinity).forEach(id => {
+            this.productAffinity[id] *= 0.95; // 5% decay
+        });
+    }
+
+    recordDwellTime(productId, dwellTime) {
+        const interestScore = Math.min(dwellTime / 10000, 1); // Normalize to 0-1
+        this.recordAction('dwell_time', productId, interestScore);
+    }
+
+    startSessionTimer() {
+        setInterval(() => {
+            const sessionDuration = Date.now() - this.sessionStart;
+            this.recordAction('session_heartbeat', sessionDuration);
+        }, 30000); // Every 30 seconds
+    }
+
+    getUserPersona() {
+        const totalInteractions = this.userActions.length;
+        const cartAdds = this.userActions.filter(a => a.type === 'add_to_cart').length;
+        const productViews = this.userActions.filter(a => a.type === 'product_view').length;
+        
+        const conversionRate = totalInteractions > 0 ? cartAdds / productViews : 0;
+        
+        return {
+            engagement: Math.min(totalInteractions / 10, 1),
+            conversionTendency: conversionRate,
+            priceSensitivity: this.priceSensitivity,
+            favoriteCategories: this.getFavoriteCategories(),
+            sessionDuration: Date.now() - this.sessionStart
+        };
+    }
+
+    getFavoriteCategories() {
+        const categoryScores = {};
+        
+        this.userActions.forEach(action => {
+            if (action.type === 'product_view' || action.type === 'add_to_cart') {
+                const product = products.find(p => p.id === action.data);
+                if (product && product.category) {
+                    if (!categoryScores[product.category]) {
+                        categoryScores[product.category] = 0;
+                    }
+                    categoryScores[product.category] += action.value;
+                }
+            }
+        });
+
+        return Object.entries(categoryScores)
+            .sort(([,a], [,b]) => b - a)
+            .slice(0, 3)
+            .map(([category]) => category);
+    }
+}
+
+// ===== DYNAMIC PRICING ENGINE =====
+class DynamicPricingEngine {
+    constructor() {
+        this.demandFactors = {};
+        this.timeFactors = {};
+        this.init();
+    }
+
+    init() {
+        this.loadMarketData();
+        this.startPriceUpdates();
+        console.log('💰 Dynamic Pricing Engine initialized');
+    }
+
+    loadMarketData() {
+        const marketData = localStorage.getItem('swiftbuy_market_data');
+        if (marketData) {
+            const data = JSON.parse(marketData);
+            Object.assign(this, data);
+        }
+    }
+
+    calculateOptimalPrice(product, userPersona) {
+        const basePrice = product.price;
+        const demandFactor = this.getDemandFactor(product.id);
+        const timeFactor = this.getTimeFactor();
+        const userFactor = this.getUserPriceFactor(userPersona);
+        
+        // Advanced pricing algorithm
+        let optimalPrice = basePrice;
+        
+        // Demand-based adjustment (±15%)
+        optimalPrice *= (1 + (demandFactor * 0.15));
+        
+        // Time-based adjustment (±10%)
+        optimalPrice *= (1 + (timeFactor * 0.10));
+        
+        // User-specific adjustment (±20%)
+        optimalPrice *= (1 + (userFactor * 0.20));
+        
+        // Ensure minimum and maximum bounds
+        const minPrice = basePrice * 0.7;  // 30% minimum discount
+        const maxPrice = basePrice * 1.5;  // 50% maximum premium
+        
+        return Math.max(minPrice, Math.min(maxPrice, optimalPrice));
+    }
+
+    getDemandFactor(productId) {
+        // Simulate demand based on:
+        // - Recent views
+        // - Add to cart frequency
+        // - Inventory levels
+        const views = window.recommendationsEngine ? 
+            window.recommendationsEngine.userBehavior.viewedProducts.filter(id => id === productId).length : 0;
+        
+        const carts = window.recommendationsEngine ?
+            window.recommendationsEngine.userBehavior.addedToCart.filter(id => id === productId).length : 0;
+        
+        const inventory = window.inventoryManager ? 
+            window.inventoryManager.getStockLevel(productId) : 10;
+        
+        const inventoryPressure = Math.max(0, 1 - (inventory / 20)); // 0-1 scale
+        
+        return Math.min(1, (views * 0.3 + carts * 0.5 + inventoryPressure * 0.2));
+    }
+
+    getTimeFactor() {
+        const now = new Date();
+        const hour = now.getHours();
+        
+        // Peak hours (7 PM - 10 PM) have higher prices
+        if (hour >= 19 && hour <= 22) return 0.1;
+        
+        // Off-peak hours (2 AM - 6 AM) have lower prices
+        if (hour >= 2 && hour <= 6) return -0.1;
+        
+        return 0;
+    }
+
+    getUserPriceFactor(userPersona) {
+        // Price-sensitive users get discounts
+        // Engaged users see premium pricing
+        if (!userPersona) return 0;
+        
+        const sensitivity = userPersona.priceSensitivity || 0.5;
+        const engagement = userPersona.engagement || 0.5;
+        
+        // High engagement, low sensitivity = premium
+        // Low engagement, high sensitivity = discount
+        return (engagement - sensitivity) * 0.5;
+    }
+
+    startPriceUpdates() {
+        // Update prices every 5 minutes
+        setInterval(() => {
+            this.updateAllPrices();
+        }, 300000);
+    }
+
+    updateAllPrices() {
+        console.log('🔄 Updating dynamic prices...');
+        // In a real implementation, this would update product displays
+        // For now, we'll just log the changes
+        products.forEach(product => {
+            const userPersona = window.userAnalytics ? window.userAnalytics.getUserPersona() : null;
+            const optimalPrice = this.calculateOptimalPrice(product, userPersona);
+            
+            if (Math.abs(optimalPrice - product.price) > 0.01) {
+                console.log(`💰 ${product.name}: $${product.price} → $${optimalPrice.toFixed(2)}`);
+            }
+        });
+    }
+}
+
+// ===== PERSONALIZED PRODUCT RANKING =====
+class PersonalizedRankingEngine {
+    constructor() {
+        this.rankingWeights = {
+            relevance: 0.4,
+            popularity: 0.3,
+            personalization: 0.3
+        };
+    }
+
+    rankProducts(products, userPersona, context = 'browse') {
+        return products
+            .map(product => ({
+                product,
+                score: this.calculateProductScore(product, userPersona, context)
+            }))
+            .sort((a, b) => b.score - a.score)
+            .map(item => item.product);
+    }
+
+    calculateProductScore(product, userPersona, context) {
+        let score = 0;
+
+        // Relevance scoring (40%)
+        score += this.calculateRelevanceScore(product, context) * this.rankingWeights.relevance;
+
+        // Popularity scoring (30%)
+        score += this.calculatePopularityScore(product) * this.rankingWeights.popularity;
+
+        // Personalization scoring (30%)
+        score += this.calculatePersonalizationScore(product, userPersona) * this.rankingWeights.personalization;
+
+        return score;
+    }
+
+    calculateRelevanceScore(product, context) {
+        let score = 0;
+
+        // Context-based scoring
+        switch (context) {
+            case 'search':
+                score += 0.7; // Search results are highly relevant
+                break;
+            case 'category':
+                score += 0.5;
+                break;
+            case 'browse':
+            default:
+                score += 0.3;
+        }
+
+        // Freshness score (new products get boost)
+        if (product.isNew) score += 0.2;
+
+        // Trending score
+        if (product.isTrending) score += 0.15;
+
+        return Math.min(score, 1);
+    }
+
+    calculatePopularityScore(product) {
+        const rating = parseFloat(product.rating.stars) || 4;
+        const reviews = parseInt(product.rating.reviews) || 10;
+        
+        // Normalize rating (0-1 scale)
+        const ratingScore = (rating - 1) / 4; // 1-5 stars to 0-1
+        
+        // Review volume score (log scale to prevent domination)
+        const volumeScore = Math.min(Math.log10(reviews + 1) / 2, 1);
+        
+        return (ratingScore * 0.6 + volumeScore * 0.4);
+    }
+
+    calculatePersonalizationScore(product, userPersona) {
+        if (!userPersona) return 0.5; // Neutral if no user data
+
+        let score = 0;
+
+        // Category affinity
+        if (userPersona.favoriteCategories && userPersona.favoriteCategories.includes(product.category)) {
+            score += 0.4;
+        }
+
+        // Price sensitivity matching
+        const priceTier = this.getPriceTier(product.price);
+        const userPricePreference = this.getUserPricePreference(userPersona);
+        
+        if (priceTier === userPricePreference) {
+            score += 0.3;
+        }
+
+        // Engagement-based scoring
+        score += userPersona.engagement * 0.3;
+
+        return Math.min(score, 1);
+    }
+
+    getPriceTier(price) {
+        if (price < 50) return 'budget';
+        if (price < 150) return 'midrange';
+        return 'premium';
+    }
+
+    getUserPricePreference(userPersona) {
+        const sensitivity = userPersona.priceSensitivity;
+        if (sensitivity > 0.7) return 'budget';
+        if (sensitivity < 0.3) return 'premium';
+        return 'midrange';
+    }
+}
+
+// ===== INITIALIZE AI SYSTEMS =====
+function initAIPersonalization() {
+    // Initialize AI engines
+    window.userAnalytics = new UserBehaviorAnalytics();
+    window.dynamicPricing = new DynamicPricingEngine();
+    window.personalizedRanking = new PersonalizedRankingEngine();
+
+    // Enhance existing systems with AI
+    enhanceSearchWithAI();
+    enhanceRecommendationsWithAI();
+    enhanceProductDisplayWithAI();
+
+    console.log('🧠 AI Personalization Engine fully initialized!');
+}
+
+function enhanceSearchWithAI() {
+    const originalPerformSearch = performSearch;
+    
+    window.performSearch = function() {
+        const results = originalPerformSearch.apply(this, arguments);
+        
+        // Personalize search results
+        if (window.userAnalytics && window.personalizedRanking) {
+            const userPersona = window.userAnalytics.getUserPersona();
+            const personalizedResults = window.personalizedRanking.rankProducts(
+                results || products, 
+                userPersona, 
+                'search'
+            );
+            
+            renderProducts(personalizedResults);
+        }
+        
+        return results;
+    };
+}
+
+function enhanceRecommendationsWithAI() {
+    const originalGenerateRecommendations = window.recommendationsEngine?.generateRecommendations;
+    
+    if (originalGenerateRecommendations) {
+        window.recommendationsEngine.generateRecommendations = function(baseProductId = null, limit = 4) {
+            const recommendations = originalGenerateRecommendations.call(this, baseProductId, limit);
+            
+            if (window.userAnalytics && window.personalizedRanking) {
+                const userPersona = window.userAnalytics.getUserPersona();
+                return window.personalizedRanking.rankProducts(
+                    recommendations, 
+                    userPersona, 
+                    'recommendations'
+                ).slice(0, limit);
+            }
+            
+            return recommendations;
+        };
+    }
+}
+
+function enhanceProductDisplayWithAI() {
+    // Add AI-powered badges to products
+    window.inventorySync.subscribe(() => {
+        setTimeout(() => {
+            addAIPoweredBadges();
+        }, 500);
+    });
+}
+
+function addAIPoweredBadges() {
+    const productCards = document.querySelectorAll('.product-container');
+    
+    productCards.forEach(card => {
+        const productId = card.dataset.id;
+        
+        // Remove existing AI badges
+        const existingAIBadge = card.querySelector('.ai-badge');
+        if (existingAIBadge) {
+            existingAIBadge.remove();
+        }
+        
+        // Add AI-powered badges
+        if (window.userAnalytics && window.dynamicPricing) {
+            const product = products.find(p => p.id === productId);
+            const userPersona = window.userAnalytics.getUserPersona();
+            
+            if (product && userPersona) {
+                // Personalization badge
+                const personalizationScore = window.personalizedRanking.calculatePersonalizationScore(product, userPersona);
+                if (personalizationScore > 0.7) {
+                    const badge = document.createElement('div');
+                    badge.className = 'ai-badge personalized-badge';
+                    badge.innerHTML = '<i class="fas fa-magic"></i> Perfect for You';
+                    badge.style.cssText = `
+                        position: absolute;
+                        top: 12px;
+                        right: 12px;
+                        background: linear-gradient(135deg, #8b5cf6, #a78bfa);
+                        color: white;
+                        padding: 6px 10px;
+                        border-radius: 8px;
+                        font-size: 0.7rem;
+                        font-weight: 700;
+                        z-index: 3;
+                        box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+                    `;
+                    card.appendChild(badge);
+                }
+                
+                // Dynamic pricing indicator
+                const optimalPrice = window.dynamicPricing.calculateOptimalPrice(product, userPersona);
+                const priceDiff = optimalPrice - product.price;
+                
+                if (priceDiff < -0.01) {
+                    const discountBadge = document.createElement('div');
+                    discountBadge.className = 'ai-badge dynamic-price-badge';
+                    discountBadge.innerHTML = `<i class="fas fa-bolt"></i> AI Price`;
+                    discountBadge.style.cssText = `
+                        position: absolute;
+                        bottom: 80px;
+                        left: 12px;
+                        background: linear-gradient(135deg, #10b981, #34d399);
+                        color: white;
+                        padding: 4px 8px;
+                        border-radius: 6px;
+                        font-size: 0.65rem;
+                        font-weight: 700;
+                        z-index: 3;
+                    `;
+                    card.appendChild(discountBadge);
+                }
+            }
+        }
+    });
+}
+
+// Initialize AI Personalization
+setTimeout(() => {
+    initAIPersonalization();
+}, 2000);
+
+// END OF SECTION 5
