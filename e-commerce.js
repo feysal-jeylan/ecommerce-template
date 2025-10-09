@@ -2752,9 +2752,13 @@ function initRealTimeInventory() {
         updateAllRecommendations();
         
         // Update wishlist
-        if (window.wishlistSystem) {
-            window.wishlistSystem.renderWishlistItems();
-        }
+if (window.wishlistSystem && window.wishlistSystem.renderWishlistItems) {
+    // Check if wishlist sidebar is open before rendering
+    const wishlistSidebar = document.getElementById('wishlist-sidebar');
+    if (wishlistSidebar && wishlistSidebar.classList.contains('active')) {
+        renderWishlistItems(); // Use the global function directly
+    }
+}
         
         // Update cart recommendations
         showCartRecommendations();
