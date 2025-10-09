@@ -1687,7 +1687,8 @@ function refreshInventoryBadges() {
     if (window.inventoryManager && window.inventoryManager.addStockBadges) {
         window.inventoryManager.addStockBadges();
     } else {
-        addStockBadges();
+        // Fallback: trigger inventory sync
+        window.inventorySync.refreshAll();
     }
 }
     
@@ -3337,86 +3338,6 @@ function enhanceProductDisplayWithAI() {
     });
 }
 
-function addAIPoweredBadges() {
-    // Safety check - ensure AI systems are ready
-    if (!window.userAnalytics || !window.dynamicPricing || !window.personalizedRanking) {
-        console.log('🤖 AI Systems: Waiting for full initialization...');
-        return;
-    }
-    
-    const productCards = document.querySelectorAll('.product-container');
-    
-    productCards.forEach(card => {
-        const productId = card.dataset.id;
-        
-        // Remove existing AI badges
-        const existingAIBadge = card.querySelector('.ai-badge');
-        if (existingAIBadge) {
-            existingAIBadge.remove();
-        }
-        
-        try {
-            // Add AI-powered badges with error handling
-            const product = products.find(p => p.id === productId);
-            const userPersona = window.userAnalytics.getUserPersona();
-            
-            if (product && userPersona) {
-                // Personalization badge
-                const personalizationScore = window.personalizedRanking.calculatePersonalizationScore(product, userPersona);
-                if (personalizationScore > 0.7) {
-                    const badge = document.createElement('div');
-                    badge.className = 'ai-badge personalized-badge';
-                    badge.innerHTML = '<i class="fas fa-magic"></i> Perfect for You';
-                    badge.style.cssText = `
-                        position: absolute;
-                        top: 12px;
-                        right: 12px;
-                        background: linear-gradient(135deg, #8b5cf6, #a78bfa);
-                        color: white;
-                        padding: 6px 10px;
-                        border-radius: 8px;
-                        font-size: 0.7rem;
-                        font-weight: 700;
-                        z-index: 3;
-                        box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
-                    `;
-                    card.appendChild(badge);
-                }
-                
-                // Dynamic pricing indicator (with error handling)
-                try {
-                    const optimalPrice = window.dynamicPricing.calculateOptimalPrice(product, userPersona);
-                    const priceDiff = optimalPrice - product.price;
-                    
-                    if (priceDiff < -0.01) {
-                        const discountBadge = document.createElement('div');
-                        discountBadge.className = 'ai-badge dynamic-price-badge';
-                        discountBadge.innerHTML = `<i class="fas fa-bolt"></i> AI Price`;
-                        discountBadge.style.cssText = `
-                            position: absolute;
-                            bottom: 80px;
-                            left: 12px;
-                            background: linear-gradient(135deg, #10b981, #34d399);
-                            color: white;
-                            padding: 4px 8px;
-                            border-radius: 6px;
-                            font-size: 0.65rem;
-                            font-weight: 700;
-                            z-index: 3;
-                        `;
-                        card.appendChild(discountBadge);
-                    }
-                } catch (pricingError) {
-                    console.warn('💰 AI Pricing: Skipping price badge due to calculation error', pricingError);
-                }
-            }
-        } catch (error) {
-            console.warn('🤖 AI Badges: Error processing product', productId, error);
-            // Continue with other products instead of breaking
-        }
-    });
-}
-
 // Initialize AI Personalization with error handling
 function safeInitAIPersonalization() {
     try {
@@ -3433,5 +3354,78 @@ function safeInitAIPersonalization() {
 setTimeout(() => {
     safeInitAIPersonalization();
 }, 3000); // Increased delay for better core system readiness
+
+
+// ===== AI-POWERED BADGES SYSTEM =====
+function addAIPoweredBadges() {
+    console.log('🎯 addAIPoweredBadges function called - IT EXISTS!');
+    
+    // Simple test version - just add one badge to prove it works
+    const productCards = document.querySelectorAll('.product-container');
+    
+    if (productCards.length > 0) {
+        const firstCard = productCards[0];
+        
+        // Remove existing AI badges
+        const existingAIBadge = firstCard.querySelector('.ai-badge');
+        if (existingAIBadge) {
+            existingAIBadge.remove();
+        }
+        
+        // Add a simple test badge
+        const badge = document.createElement('div');
+        badge.className = 'ai-badge test-badge';
+        badge.innerHTML = '<i class="fas fa-star"></i> AI Test';
+        badge.style.cssText = `
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: linear-gradient(135deg, #8b5cf6, #a78bfa);
+            color: white;
+            padding: 6px 10px;
+            border-radius: 8px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            z-index: 3;
+        `;
+        firstCard.appendChild(badge);
+        
+        console.log('✅ Test AI badge added to first product');
+    }
+    
+    return true;
+}
+
+console.log('🔍 addAIPoweredBadges function defined:', typeof addAIPoweredBadges);
+
+// ===== GLOBAL FUNCTION EXPORTS =====
+console.log('🔄 Starting global exports...');
+
+// Debug: Check what functions exist
+console.log('🔍 Function availability check:');
+console.log(' - addAIPoweredBadges:', typeof addAIPoweredBadges);
+console.log(' - addToCart:', typeof addToCart);
+console.log(' - showToast:', typeof showToast);
+
+// Only export what actually exists
+if (typeof addAIPoweredBadges === 'function') {
+    window.addAIPoweredBadges = addAIPoweredBadges;
+    console.log('✅ addAIPoweredBadges exported');
+} else {
+    console.log('❌ addAIPoweredBadges NOT available for export');
+}
+
+if (typeof addToCart === 'function') {
+    window.addToCart = addToCart;
+    console.log('✅ addToCart exported');
+}
+
+if (typeof showToast === 'function') {
+    window.showToast = showToast;
+    console.log('✅ showToast exported');
+}
+
+console.log('🌐 Global exports completed');
+console.log('window.addAIPoweredBadges:', typeof window.addAIPoweredBadges);
 
 // END OF SECTION 5
