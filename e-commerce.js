@@ -1,6 +1,56 @@
 // e-commerce.js - WORLD-CLASS E-COMMERCE PLATFORM
 // SECTION 1: CORE FOUNDATION & PRODUCTS SYSTEM
 
+// ===== REAL-TIME INVENTORY EVENT SYSTEM =====
+const InventoryEvents = {
+    STOCK_UPDATED: 'inventory:stockUpdated',
+    OUT_OF_STOCK: 'inventory:outOfStock',
+    LOW_STOCK: 'inventory:lowStock'
+};
+
+// Central inventory state manager
+class InventorySync {
+    constructor() {
+        this.subscribers = new Set();
+        this.init();
+    }
+
+    init() {
+        // Listen for inventory changes
+        window.addEventListener('cartUpdated', () => {
+            setTimeout(() => this.notifyAll(), 100);
+        });
+        
+        window.addEventListener('wishlistUpdated', () => {
+            setTimeout(() => this.notifyAll(), 100);
+        });
+    }
+
+    subscribe(callback) {
+        this.subscribers.add(callback);
+        return () => this.subscribers.delete(callback);
+    }
+
+    notifyAll() {
+        this.subscribers.forEach(callback => {
+            try {
+                callback();
+            } catch (error) {
+                console.error('Inventory subscriber error:', error);
+            }
+        });
+    }
+
+    // Force refresh everything
+    refreshAll() {
+        this.notifyAll();
+    }
+}
+
+// Create global inventory sync instance
+window.inventorySync = new InventorySync();
+
+
 // ===== CORE IMPORTS & VARIABLES =====
 import { CART_KEY, loadCart, saveCart, cartItemCount } from './cartModule.js';
 
@@ -109,6 +159,7 @@ function calculateAverageRating(product) {
 }
 
 // ===== WORLD-CLASS PRODUCT CARD GENERATION =====
+// ===== REAL-TIME PRODUCT CARD GENERATION =====
 function createProductHTML(p) {
     const stockLevel = inventoryManager ? inventoryManager.getStockLevel(p.id) : (p.inventory?.stock || 10);
     const isOutOfStock = stockLevel === 0;
@@ -125,27 +176,40 @@ function createProductHTML(p) {
     if (p.isFeatured) badges.push({ type: 'featured', text: 'Featured' });
     if (p.isTrending) badges.push({ type: 'trending', text: 'Trending' });
     
-    // Stock status
+    // Real-time stock status
     let stockStatus = '';
     let stockClass = '';
+    let stockBadge = '';
+    
     if (isOutOfStock) {
         stockStatus = 'Out of Stock';
         stockClass = 'out-of-stock';
+        stockBadge = '<div class="product-stock-badge stock-out-of-stock">Out of Stock</div>';
     } else if (isLowStock) {
         stockStatus = `Only ${stockLevel} left`;
         stockClass = 'low-stock';
+        stockBadge = `<div class="product-stock-badge stock-low-stock">Only ${stockLevel} left!</div>`;
+    } else if (stockLevel <= 10) {
+        stockStatus = `${stockLevel} in stock`;
+        stockClass = 'in-stock';
+        stockBadge = `<div class="product-stock-badge stock-in-stock">${stockLevel} in stock</div>`;
     } else {
         stockStatus = 'In Stock';
         stockClass = 'in-stock';
     }
     
     return `
-        <article class="product-container" 
+        <article class="product-container ${isOutOfStock ? 'out-of-stock' : ''}" 
                  data-id="${p.id}" 
                  data-price-cents="${cents(p.price)}"
                  data-stock="${stockLevel}"
-                 data-category="${p.category || 'uncategorized'}">
+                 data-category="${p.category || 'uncategorized'}"
+                 data-instock="${!isOutOfStock}">
             
+            <!-- Dynamic Stock Badge -->
+            ${stockBadge}
+            
+            <!-- Product Badges -->
             ${badges.length > 0 ? `
                 <div class="product-badges">
                     ${badges.map(badge => `
@@ -289,6 +353,7 @@ function attachProductEventListeners() {
 }
 
 // ===== FIXED ADD TO CART WITH INVENTORY INTEGRATION =====
+// ===== REAL-TIME ADD TO CART WITH INVENTORY SYNC =====
 function addToCart(productId) {
     // Check inventory first
     if (window.inventoryManager) {
@@ -343,11 +408,9 @@ function addToCart(productId) {
     renderCartCount();
     showToast('Added to cart ✓');
     
-    // Refresh inventory UI
-    if (window.inventoryManager && window.inventoryManager.refreshInventoryUI) {
-        setTimeout(() => {
-            window.inventoryManager.refreshInventoryUI();
-        }, 100);
+    // TRIGGER REAL-TIME INVENTORY SYNC
+    if (window.inventorySync) {
+        window.inventorySync.refreshAll();
     }
     
     if (window.floatingCart && window.floatingCart.openCartSidebar) {
@@ -1267,36 +1330,42 @@ function initWishlist() {
         }
     }
 
-    // Wishlist UI management
-    function renderWishlistItems() {
-        const wishlist = loadWishlist();
-        const wishlistBody = document.getElementById('wishlist-body');
-        
-        if (!wishlistBody) return;
-        
-        if (wishlist.length === 0) {
-            wishlistBody.innerHTML = `
-                <div class="wishlist-empty-state">
-                    <i class="far fa-heart"></i>
-                    <p>Your wishlist is empty</p>
-                    <small>Save your favorite items here!</small>
-                </div>
-            `;
-            return;
-        }
+  // REAL-TIME wishlist items
+function renderWishlistItems() {
+    const wishlist = loadWishlist();
+    const wishlistBody = document.getElementById('wishlist-body');
+    
+    if (!wishlistBody) return;
+    
+    if (wishlist.length === 0) {
+        wishlistBody.innerHTML = `
+            <div class="wishlist-empty-state">
+                <i class="far fa-heart"></i>
+                <p>Your wishlist is empty</p>
+                <small>Save your favorite items here!</small>
+            </div>
+        `;
+        return;
+    }
 
-        wishlistBody.innerHTML = wishlist.map(item => `
-            <div class="wishlist-item" data-id="${item.id}">
+    wishlistBody.innerHTML = wishlist.map(item => {
+        const product = products.find(p => p.id === item.id);
+        const stockLevel = window.inventoryManager ? window.inventoryManager.getStockLevel(item.id) : product.inventory.stock;
+        const isOutOfStock = stockLevel === 0;
+        
+        return `
+            <div class="wishlist-item" data-id="${item.id}" data-instock="${!isOutOfStock}">
                 <div class="wishlist-item-image">
                     <img src="${item.image}" alt="${item.name}">
+                    ${isOutOfStock ? '<div class="product-stock-badge stock-out-of-stock">Out of Stock</div>' : ''}
                 </div>
                 <div class="wishlist-item-details">
                     <h4 class="wishlist-item-name">${item.name}</h4>
                     <div class="wishlist-item-price">${money(cents(item.price))}</div>
                     <div class="wishlist-item-actions">
-                        <button class="move-to-cart-btn" data-move-to-cart="${item.id}">
+                        <button class="move-to-cart-btn" data-move-to-cart="${item.id}" ${isOutOfStock ? 'disabled' : ''}>
                             <i class="fas fa-shopping-cart"></i>
-                            Add to Cart
+                            ${isOutOfStock ? 'Out of Stock' : 'Add to Cart'}
                         </button>
                         <button class="remove-wishlist-btn" data-remove-wishlist="${item.id}" aria-label="Remove from wishlist">
                             <i class="fas fa-trash"></i>
@@ -1304,10 +1373,11 @@ function initWishlist() {
                     </div>
                 </div>
             </div>
-        `).join('');
+        `;
+    }).join('');
 
-        attachWishlistItemListeners();
-    }
+    attachWishlistItemListeners();
+}
 
     function attachWishlistItemListeners() {
         // Move to cart buttons
@@ -2279,12 +2349,26 @@ function initRecommendationsEngine() {
         renderRecommendations(recommendations, 'quickview-recommendations');
     }
 
-    function renderRecommendations(recommendations, containerId) {
-        const container = document.getElementById(containerId);
-        if (!container || !recommendations.length) return;
+// REAL-TIME recommendation cards
+function renderRecommendations(recommendations, containerId) {
+    const container = document.getElementById(containerId);
+    if (!container || !recommendations.length) return;
 
-        const recommendationsHTML = recommendations.map(product => `
-            <div class="recommendation-card" data-id="${product.id}">
+    const recommendationsHTML = recommendations.map(product => {
+        const stockLevel = window.inventoryManager ? window.inventoryManager.getStockLevel(product.id) : product.inventory.stock;
+        const isOutOfStock = stockLevel === 0;
+        const isLowStock = window.inventoryManager ? window.inventoryManager.isLowStock(product.id) : (stockLevel <= 3);
+        
+        let stockBadge = '';
+        if (isOutOfStock) {
+            stockBadge = '<div class="product-stock-badge stock-out-of-stock">Out of Stock</div>';
+        } else if (isLowStock) {
+            stockBadge = `<div class="product-stock-badge stock-low-stock">Only ${stockLevel} left!</div>`;
+        }
+        
+        return `
+            <div class="recommendation-card" data-id="${product.id}" data-instock="${!isOutOfStock}">
+                ${stockBadge}
                 <div class="recommendation-image">
                     <img src="${product.image}" alt="${product.name}">
                 </div>
@@ -2292,19 +2376,20 @@ function initRecommendationsEngine() {
                 <div class="recommendation-price">${money(cents(product.price))}</div>
                 <div class="recommendation-rating">${product.rating.stars}</div>
                 <div class="recommendation-actions">
-                    <button class="recommendation-cart-btn" data-id="${product.id}">
-                        Add to Cart
+                    <button class="recommendation-cart-btn" data-id="${product.id}" ${isOutOfStock ? 'disabled' : ''}>
+                        ${isOutOfStock ? 'Out of Stock' : 'Add to Cart'}
                     </button>
                     <button class="recommendation-wishlist-btn" data-id="${product.id}">
                         <i class="far fa-heart"></i>
                     </button>
                 </div>
             </div>
-        `).join('');
+        `;
+    }).join('');
 
-        container.innerHTML = recommendationsHTML;
-        attachRecommendationListeners(containerId);
-    }
+    container.innerHTML = recommendationsHTML;
+    attachRecommendationListeners(containerId);
+}
 
     function attachRecommendationListeners(containerId) {
         const container = document.getElementById(containerId);
@@ -2448,6 +2533,10 @@ setTimeout(() => {
         window.recommendationsEngine = initRecommendationsEngine();
         
         console.log('✅ SwiftBuy application fully initialized!');
+
+        initRealTimeInventory();
+        console.log('🔄 Real-time inventory system ready!');
+        // ===== END OF ADDED LINES =====
         
         // Add CSS for animations
         const style = document.createElement('style');
@@ -2593,6 +2682,103 @@ if (document.readyState === 'loading') {
 window.addEventListener('error', (event) => {
     console.error('Global error caught:', event.error);
 });
+// ===== REAL-TIME INVENTORY UPDATE SYSTEM =====
+function initRealTimeInventory() {
+    // Subscribe to inventory changes
+    window.inventorySync.subscribe(() => {
+        console.log('🔄 Real-time inventory update triggered');
+        
+        // Update main product grid
+        const currentProducts = document.querySelectorAll('.product-container');
+        currentProducts.forEach(card => {
+            const productId = card.dataset.id;
+            if (window.inventoryManager) {
+                const stockLevel = window.inventoryManager.getStockLevel(productId);
+                const isOutOfStock = stockLevel === 0;
+                
+                // Update data attribute
+                card.dataset.stock = stockLevel;
+                card.dataset.instock = !isOutOfStock;
+                
+                // Update stock badge
+                let badge = card.querySelector('.product-stock-badge');
+                if (isOutOfStock) {
+                    card.classList.add('out-of-stock');
+                    if (!badge) {
+                        badge = document.createElement('div');
+                        badge.className = 'product-stock-badge stock-out-of-stock';
+                        card.appendChild(badge);
+                    }
+                    badge.textContent = 'Out of Stock';
+                    badge.className = 'product-stock-badge stock-out-of-stock';
+                } else if (window.inventoryManager.isLowStock(productId)) {
+                    card.classList.remove('out-of-stock');
+                    if (!badge) {
+                        badge = document.createElement('div');
+                        card.appendChild(badge);
+                    }
+                    badge.textContent = `Only ${stockLevel} left!`;
+                    badge.className = 'product-stock-badge stock-low-stock';
+                } else if (stockLevel <= 10) {
+                    card.classList.remove('out-of-stock');
+                    if (!badge) {
+                        badge = document.createElement('div');
+                        card.appendChild(badge);
+                    }
+                    badge.textContent = `${stockLevel} in stock`;
+                    badge.className = 'product-stock-badge stock-in-stock';
+                } else if (badge) {
+                    badge.remove();
+                    card.classList.remove('out-of-stock');
+                }
+                
+                // Update add to cart button
+                const addToCartBtn = card.querySelector('.add-to-cart');
+                if (addToCartBtn) {
+                    if (isOutOfStock) {
+                        addToCartBtn.disabled = true;
+                        addToCartBtn.innerHTML = '<i class="fas fa-shopping-cart"></i> Out of Stock';
+                        addToCartBtn.style.opacity = '0.6';
+                    } else {
+                        addToCartBtn.disabled = false;
+                        addToCartBtn.innerHTML = '<i class="fas fa-shopping-cart"></i> Add to Cart';
+                        addToCartBtn.style.opacity = '1';
+                    }
+                }
+            }
+        });
+        
+        // Update recommendations
+        updateAllRecommendations();
+        
+        // Update wishlist
+        if (window.wishlistSystem) {
+            window.wishlistSystem.renderWishlistItems();
+        }
+        
+        // Update cart recommendations
+        showCartRecommendations();
+    });
+}
+
+function updateAllRecommendations() {
+    // Update "You might also like"
+    if (window.recommendationsEngine && window.recommendationsEngine.showMainPageRecommendations) {
+        window.recommendationsEngine.showMainPageRecommendations();
+    }
+    
+    // Update "Frequently bought together"
+    const quickviewRecs = document.getElementById('quickview-recommendations');
+    if (quickviewRecs && currentProduct) {
+        if (window.recommendationsEngine && window.recommendationsEngine.showQuickViewRecommendations) {
+            window.recommendationsEngine.showQuickViewRecommendations(currentProduct.id);
+        }
+    }
+    
+    // Update "Complete your purchase"
+    showCartRecommendations();
+}
+
 
 // Debug helper
 window.debugSwiftBuy = function() {
