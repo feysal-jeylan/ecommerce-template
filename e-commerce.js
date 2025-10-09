@@ -1533,7 +1533,7 @@ function initInventoryManagement() {
         return false;
     }
     
-// Add stock badges to product cards - ENHANCED VERSION
+// Add stock badges to product cards - PROPERLY STYLED VERSION
 function addStockBadges() {
     const productCards = document.querySelectorAll('.product-container');
     
@@ -1542,7 +1542,7 @@ function addStockBadges() {
         const stockLevel = getStockLevel(productId);
         const lowStock = isLowStock(productId);
         
-        console.log(`Product ${productId}: Stock ${stockLevel}, Low Stock: ${lowStock}`); // Debug
+        console.log(`🔄 Updating badges for ${productId}: Stock ${stockLevel}, Low Stock: ${lowStock}`);
         
         // Remove existing badges
         const existingBadge = card.querySelector('.product-stock-badge');
@@ -1550,32 +1550,55 @@ function addStockBadges() {
             existingBadge.remove();
         }
         
-        // Add out-of-stock overlay
+        // Remove out-of-stock classes first
+        card.classList.remove('out-of-stock');
+        
+        // Add appropriate badge based on stock level
         if (stockLevel === 0) {
             card.classList.add('out-of-stock');
             const badge = document.createElement('div');
             badge.className = 'product-stock-badge stock-out-of-stock';
             badge.textContent = 'Out of Stock';
-            badge.style.cssText = 'position: absolute; top: 12px; left: 12px; padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; z-index: 2; background: #ef4444; color: white;';
             card.appendChild(badge);
-        } else {
-            card.classList.remove('out-of-stock');
             
-            if (lowStock) {
-                const badge = document.createElement('div');
-                badge.className = 'product-stock-badge stock-low-stock';
-                badge.textContent = `Only ${stockLevel} left!`;
-                badge.style.cssText = 'position: absolute; top: 12px; left: 12px; padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; z-index: 2; background: #f59e0b; color: white; animation: pulseWarning 2s infinite;';
-                card.appendChild(badge);
-            } else if (stockLevel <= 10) {
-                const badge = document.createElement('div');
-                badge.className = 'product-stock-badge stock-in-stock';
-                badge.textContent = `${stockLevel} in stock`;
-                badge.style.cssText = 'position: absolute; top: 12px; left: 12px; padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; z-index: 2; background: #10b981; color: white;';
-                card.appendChild(badge);
+        } else if (lowStock) {
+            const badge = document.createElement('div');
+            badge.className = 'product-stock-badge stock-low-stock';
+            badge.textContent = `Only ${stockLevel} left!`;
+            card.appendChild(badge);
+            
+        } else if (stockLevel <= 10) {
+            const badge = document.createElement('div');
+            badge.className = 'product-stock-badge stock-in-stock';
+            badge.textContent = `${stockLevel} in stock`;
+            card.appendChild(badge);
+        }
+        
+        // Also update the add to cart button state
+        const addToCartBtn = card.querySelector('.add-to-cart');
+        if (addToCartBtn) {
+            if (stockLevel === 0) {
+                addToCartBtn.disabled = true;
+                addToCartBtn.innerHTML = '<i class="fas fa-shopping-cart"></i> Out of Stock';
+                addToCartBtn.style.opacity = '0.6';
+            } else {
+                addToCartBtn.disabled = false;
+                addToCartBtn.innerHTML = '<i class="fas fa-shopping-cart"></i> Add to Cart';
+                addToCartBtn.style.opacity = '1';
             }
         }
     });
+    
+    console.log('✅ Stock badges updated for all products');
+}
+
+// Force refresh inventory badges
+function refreshInventoryBadges() {
+    if (window.inventoryManager && window.inventoryManager.addStockBadges) {
+        window.inventoryManager.addStockBadges();
+    } else {
+        addStockBadges();
+    }
 }
     
     // Create inventory dashboard
@@ -1697,7 +1720,8 @@ function addStockBadges() {
         isLowStock,
         updateStock,
         restockProduct,
-        refreshInventoryUI
+        refreshInventoryUI,
+        addStockBadges // Add this line
     };
 }
 
@@ -2395,6 +2419,12 @@ async function initializeApplication() {
         
         // Step 3: Initialize inventory management
         window.inventoryManager = initInventoryManagement();
+        // Add this line right after to initialize badges:
+setTimeout(() => {
+    if (window.inventoryManager && window.inventoryManager.addStockBadges) {
+        window.inventoryManager.addStockBadges();
+    }
+}, 500);
         
         // Step 4: Render products
         renderProducts();
@@ -2576,5 +2606,28 @@ window.debugSwiftBuy = function() {
 
 console.log('🎉 SwiftBuy e-commerce platform loaded successfully!');
 console.log('💡 Use debugSwiftBuy() in console for system status');
+
+// Debug function to test inventory badges
+window.testInventoryBadges = function() {
+    console.log('🧪 Testing Inventory Badges...');
+    
+    if (!window.inventoryManager) {
+        console.error('❌ Inventory manager not available');
+        return;
+    }
+    
+    const inventory = window.inventoryManager.loadInventory();
+    console.log('📊 Current Inventory:', inventory);
+    
+    products.forEach(product => {
+        const stock = window.inventoryManager.getStockLevel(product.id);
+        const lowStock = window.inventoryManager.isLowStock(product.id);
+        console.log(`📦 ${product.name}: ${stock} in stock, Low Stock: ${lowStock}`);
+    });
+    
+    // Force refresh badges
+    refreshInventoryBadges();
+    console.log('✅ Badges refreshed');
+};
 
 // END OF SECTION 4 - APPLICATION COMPLETE

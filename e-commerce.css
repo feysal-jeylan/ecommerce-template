@@ -2872,8 +2872,89 @@ quickveiw-modal .wishlist-button {
     justify-content: space-between;
   }
 }
+/* ===== INVENTORY BADGES STYLES ===== */
+.product-stock-badge {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    z-index: 3;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    backdrop-filter: blur(10px);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.stock-out-of-stock {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: white;
+    animation: shake 0.5s ease-in-out;
+}
+
+.stock-low-stock {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: white;
+    animation: pulseWarning 2s infinite;
+}
+
+.stock-in-stock {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+}
 
 @keyframes pulseWarning {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
+    0%, 100% { 
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% { 
+        opacity: 0.8;
+        transform: scale(1.05);
+    }
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-2px); }
+    75% { transform: translateX(2px); }
+}
+
+/* Ensure product container has relative positioning for absolute badges */
+.product-container {
+    position: relative;
+}
+
+/* Out of stock overlay */
+.product-container.out-of-stock::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.9);
+    z-index: 2;
+    border-radius: 16px;
+}
+
+.product-container.out-of-stock::after {
+    content: 'Out of Stock';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(239, 68, 68, 0.95);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 1rem;
+    z-index: 3;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    box-shadow: 0 8px 24px rgba(239, 68, 68, 0.3);
 }
