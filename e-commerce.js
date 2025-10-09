@@ -355,11 +355,18 @@ function attachProductEventListeners() {
 
 // ===== FIXED ADD TO CART WITH INVENTORY INTEGRATION =====
 // ===== REAL-TIME ADD TO CART WITH INVENTORY SYNC =====
+// ===== REAL-TIME ADD TO CART WITH ENHANCED INVENTORY SYNC =====
 function addToCart(productId) {
-    // Check inventory first
+    // ENHANCED inventory check with real-time validation
     if (window.inventoryManager) {
         const stockLevel = window.inventoryManager.getStockLevel(productId);
+        const currentCart = loadCart();
+        const existingCartItem = currentCart.find(item => item.id === productId);
+        const currentCartQuantity = existingCartItem ? existingCartItem.quantity : 0;
         
+        console.log(`🛒 Add to Cart Check: Product ${productId}, Stock: ${stockLevel}, In Cart: ${currentCartQuantity}`);
+        
+        // Check if adding would exceed available stock
         if (stockLevel === 0) {
             showToast('Sorry, this product is out of stock!', [
                 {
@@ -373,8 +380,15 @@ function addToCart(productId) {
             return false;
         }
         
+        // Check if adding would exceed current stock
+        if (currentCartQuantity >= stockLevel) {
+            showToast(`Cannot add more! Only ${stockLevel} item${stockLevel > 1 ? 's' : ''} available.`);
+            return false;
+        }
+        
         if (window.inventoryManager.isLowStock(productId)) {
-            showToast(`Low stock! Only ${stockLevel} item${stockLevel > 1 ? 's' : ''} left.`, [], 3000);
+            const remainingStock = stockLevel - currentCartQuantity;
+            showToast(`Low stock! Only ${remainingStock} item${remainingStock > 1 ? 's' : ''} left.`, [], 3000);
         }
         
         // Update inventory BEFORE adding to cart
@@ -409,13 +423,17 @@ function addToCart(productId) {
     renderCartCount();
     showToast('Added to cart ✓');
     
-    // TRIGGER REAL-TIME INVENTORY SYNC
+    // TRIGGER REAL-TIME INVENTORY SYNC WITH DELAY FOR BADGE UPDATES
     if (window.inventorySync) {
-        window.inventorySync.refreshAll();
+        setTimeout(() => {
+            window.inventorySync.refreshAll();
+        }, 200);
     }
     
     if (window.floatingCart && window.floatingCart.openCartSidebar) {
-        window.floatingCart.openCartSidebar();
+        setTimeout(() => {
+            window.floatingCart.openCartSidebar();
+        }, 300);
     }
     
     return true;
@@ -1146,7 +1164,7 @@ function renderCartItems() {
         });
     }
 
- // Update item quantity - FIXED with inventory integration
+// Update item quantity - ENHANCED with proper inventory sync
 function updateItemQuantity(itemId, action) {
     const cart = loadCart();
     const itemIndex = cart.findIndex(item => item.id === itemId);
@@ -1162,11 +1180,16 @@ function updateItemQuantity(itemId, action) {
                 showToast('No more items available in stock!');
                 return;
             }
+            
+            if (window.inventoryManager.isLowStock(itemId)) {
+                const remainingStock = window.inventoryManager.getStockLevel(itemId);
+                showToast(`Low stock! Only ${remainingStock} item${remainingStock > 1 ? 's' : ''} left.`);
+            }
         }
         
         cart[itemIndex].quantity += 1;
         
-        // UPDATE INVENTORY
+        // UPDATE INVENTORY - DEDUCT
         if (window.inventoryManager) {
             window.inventoryManager.updateStock(itemId, 1);
         }
@@ -1175,7 +1198,7 @@ function updateItemQuantity(itemId, action) {
         if (cart[itemIndex].quantity > 1) {
             cart[itemIndex].quantity -= 1;
             
-            // RESTOCK INVENTORY
+            // RESTOCK INVENTORY - ADD BACK
             if (window.inventoryManager) {
                 window.inventoryManager.restockProduct(itemId, 1);
             }
@@ -1192,13 +1215,19 @@ function updateItemQuantity(itemId, action) {
     updateCartTotals();
     highlightUpdatedItem(itemId);
     
-    // REFRESH INVENTORY UI
-    if (window.inventoryManager && window.inventoryManager.refreshInventoryUI) {
-        setTimeout(window.inventoryManager.refreshInventoryUI, 100);
-    }
+    // FORCE REAL-TIME INVENTORY REFRESH
+    setTimeout(() => {
+        if (window.inventoryManager && window.inventoryManager.refreshInventoryUI) {
+            window.inventoryManager.refreshInventoryUI();
+        }
+        // Also trigger the global inventory sync
+        if (window.inventorySync) {
+            window.inventorySync.refreshAll();
+        }
+    }, 100);
 }
 
- // Remove item from cart - FIXED with inventory restocking
+// Remove item from cart - ENHANCED with proper inventory restoration
 function removeCartItem(itemId) {
     if (!confirm('Remove this item from your cart?')) return;
     
@@ -1208,26 +1237,38 @@ function removeCartItem(itemId) {
     if (itemIndex === -1) return;
     
     const quantityToRestock = cart[itemIndex].quantity;
+    const productName = cart[itemIndex].name;
     
     // Remove from cart
     const updatedCart = cart.filter(item => item.id !== itemId);
     saveCart(updatedCart);
     
-    // RESTOCK INVENTORY
+    // RESTOCK INVENTORY - ADD BACK ALL QUANTITY
     if (window.inventoryManager) {
         window.inventoryManager.restockProduct(itemId, quantityToRestock);
+        console.log(`🔄 Restocked ${quantityToRestock} units of ${productName}`);
     }
     
     renderCartItems();
     updateCartTotals();
     renderCartCount();
     
-    showToast('Item removed from cart');
+    showToast(`Removed ${productName} from cart`);
     
-    // REFRESH INVENTORY UI
-    if (window.inventoryManager && window.inventoryManager.refreshInventoryUI) {
-        setTimeout(window.inventoryManager.refreshInventoryUI, 100);
-    }
+    // FORCE COMPLETE INVENTORY REFRESH
+    setTimeout(() => {
+        if (window.inventoryManager && window.inventoryManager.refreshInventoryUI) {
+            window.inventoryManager.refreshInventoryUI();
+        }
+        // Trigger global sync for all systems
+        if (window.inventorySync) {
+            window.inventorySync.refreshAll();
+        }
+        // Also update AI badges
+        if (window.addAIPoweredBadges) {
+            setTimeout(window.addAIPoweredBadges, 200);
+        }
+    }, 150);
 }
 
     // Highlight updated item
@@ -2706,11 +2747,10 @@ window.addEventListener('error', (event) => {
 // ===== REAL-TIME INVENTORY UPDATE SYSTEM =====
 function initRealTimeInventory() {
     // Subscribe to inventory changes
-    window.inventorySync.subscribe(() => {
-    console.log('🔄 Real-time inventory update triggered');
+ window.inventorySync.subscribe(() => {
     
     try {
-        // Update main product grid
+        // Update main product grid with PROPER badge logic
         const currentProducts = document.querySelectorAll('.product-container');
         currentProducts.forEach(card => {
             const productId = card.dataset.id;
@@ -2721,20 +2761,18 @@ function initRealTimeInventory() {
                 
                 console.log(`🔄 Updating badges for ${productId}: Stock ${stockLevel}, Low Stock: ${lowStock}`);
                 
-                // Update data attribute
+                // Update data attributes
                 card.dataset.stock = stockLevel;
                 card.dataset.instock = !isOutOfStock;
                 
-                // Remove existing badges
-                const existingBadge = card.querySelector('.product-stock-badge');
-                if (existingBadge) {
-                    existingBadge.remove();
-                }
+                // Remove ONLY stock badges (not AI badges)
+                const existingStockBadges = card.querySelectorAll('.product-stock-badge:not(.ai-badge)');
+                existingStockBadges.forEach(badge => badge.remove());
                 
                 // Remove out-of-stock classes first
                 card.classList.remove('out-of-stock');
                 
-                // Add appropriate badge based on stock level
+                // Add appropriate stock badge based on CURRENT inventory
                 if (stockLevel === 0) {
                     card.classList.add('out-of-stock');
                     const badge = document.createElement('div');
@@ -2753,12 +2791,9 @@ function initRealTimeInventory() {
                     badge.className = 'product-stock-badge stock-in-stock';
                     badge.textContent = `${stockLevel} in stock`;
                     card.appendChild(badge);
-                } else if (existingBadge) {
-                    existingBadge.remove();
-                    card.classList.remove('out-of-stock');
                 }
                 
-                // Also update the add to cart button state
+                // Update add to cart button state
                 const addToCartBtn = card.querySelector('.add-to-cart');
                 if (addToCartBtn) {
                     if (stockLevel === 0) {
@@ -2776,17 +2811,19 @@ function initRealTimeInventory() {
         
         console.log('✅ Stock badges updated for all products');
         
-        // Safely update AI recommendations
+        // Safely update AI systems with proper timing
         setTimeout(() => {
             try {
                 updateAllRecommendations();
-                if (window.aiSystemsReady !== false) {
-                    addAIPoweredBadges();
+                if (window.aiSystemsReady !== false && window.addAIPoweredBadges) {
+                    setTimeout(() => {
+                        window.addAIPoweredBadges();
+                    }, 300);
                 }
             } catch (aiError) {
                 console.warn('🤖 AI Update: Skipping due to initialization issues');
             }
-        }, 100);
+        }, 200);
         
     } catch (error) {
         console.error('❌ Inventory Update: Critical error in update cycle', error);
@@ -3388,7 +3425,7 @@ function addAIPoweredBadges() {
                 const personalizationScore = window.personalizedRanking.calculatePersonalizationScore(product, userPersona);
                 console.log(`📊 ${product.name}: Personalization Score ${personalizationScore.toFixed(3)}`);
                 
-                if (personalizationScore > 0.7) {
+                if (personalizationScore > 0.6) {
                     const badge = document.createElement('div');
                     badge.className = 'ai-badge personalized-badge';
                     badge.innerHTML = '<i class="fas fa-magic"></i> Perfect for You';
