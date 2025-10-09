@@ -1168,7 +1168,8 @@ a:focus-visible {
   transition: all 0.3s ease;
 }
 
-quickveiw-modal .wishlist-button {
+/* With this: */
+.quickview-modal .wishlist-button {
   z-index: 1000 !important;
 }
 .quickview-modal.active {

@@ -2687,8 +2687,9 @@ window.addEventListener('error', (event) => {
 function initRealTimeInventory() {
     // Subscribe to inventory changes
     window.inventorySync.subscribe(() => {
-        console.log('🔄 Real-time inventory update triggered');
-        
+    console.log('🔄 Real-time inventory update triggered');
+    
+    try {
         // Update main product grid
         const currentProducts = document.querySelectorAll('.product-container');
         currentProducts.forEach(card => {
@@ -2696,47 +2697,51 @@ function initRealTimeInventory() {
             if (window.inventoryManager) {
                 const stockLevel = window.inventoryManager.getStockLevel(productId);
                 const isOutOfStock = stockLevel === 0;
+                const lowStock = window.inventoryManager.isLowStock(productId);
+                
+                console.log(`🔄 Updating badges for ${productId}: Stock ${stockLevel}, Low Stock: ${lowStock}`);
                 
                 // Update data attribute
                 card.dataset.stock = stockLevel;
                 card.dataset.instock = !isOutOfStock;
                 
-                // Update stock badge
-                let badge = card.querySelector('.product-stock-badge');
-                if (isOutOfStock) {
+                // Remove existing badges
+                const existingBadge = card.querySelector('.product-stock-badge');
+                if (existingBadge) {
+                    existingBadge.remove();
+                }
+                
+                // Remove out-of-stock classes first
+                card.classList.remove('out-of-stock');
+                
+                // Add appropriate badge based on stock level
+                if (stockLevel === 0) {
                     card.classList.add('out-of-stock');
-                    if (!badge) {
-                        badge = document.createElement('div');
-                        badge.className = 'product-stock-badge stock-out-of-stock';
-                        card.appendChild(badge);
-                    }
-                    badge.textContent = 'Out of Stock';
+                    const badge = document.createElement('div');
                     badge.className = 'product-stock-badge stock-out-of-stock';
-                } else if (window.inventoryManager.isLowStock(productId)) {
-                    card.classList.remove('out-of-stock');
-                    if (!badge) {
-                        badge = document.createElement('div');
-                        card.appendChild(badge);
-                    }
-                    badge.textContent = `Only ${stockLevel} left!`;
+                    badge.textContent = 'Out of Stock';
+                    card.appendChild(badge);
+                    
+                } else if (lowStock) {
+                    const badge = document.createElement('div');
                     badge.className = 'product-stock-badge stock-low-stock';
+                    badge.textContent = `Only ${stockLevel} left!`;
+                    card.appendChild(badge);
+                    
                 } else if (stockLevel <= 10) {
-                    card.classList.remove('out-of-stock');
-                    if (!badge) {
-                        badge = document.createElement('div');
-                        card.appendChild(badge);
-                    }
-                    badge.textContent = `${stockLevel} in stock`;
+                    const badge = document.createElement('div');
                     badge.className = 'product-stock-badge stock-in-stock';
-                } else if (badge) {
-                    badge.remove();
+                    badge.textContent = `${stockLevel} in stock`;
+                    card.appendChild(badge);
+                } else if (existingBadge) {
+                    existingBadge.remove();
                     card.classList.remove('out-of-stock');
                 }
                 
-                // Update add to cart button
+                // Also update the add to cart button state
                 const addToCartBtn = card.querySelector('.add-to-cart');
                 if (addToCartBtn) {
-                    if (isOutOfStock) {
+                    if (stockLevel === 0) {
                         addToCartBtn.disabled = true;
                         addToCartBtn.innerHTML = '<i class="fas fa-shopping-cart"></i> Out of Stock';
                         addToCartBtn.style.opacity = '0.6';
@@ -2749,21 +2754,24 @@ function initRealTimeInventory() {
             }
         });
         
-        // Update recommendations
-        updateAllRecommendations();
+        console.log('✅ Stock badges updated for all products');
         
-        // Update wishlist
-if (window.wishlistSystem && window.wishlistSystem.renderWishlistItems) {
-    // Check if wishlist sidebar is open before rendering
-    const wishlistSidebar = document.getElementById('wishlist-sidebar');
-    if (wishlistSidebar && wishlistSidebar.classList.contains('active')) {
-        renderWishlistItems(); // Use the global function directly
+        // Safely update AI recommendations
+        setTimeout(() => {
+            try {
+                updateAllRecommendations();
+                if (window.aiSystemsReady !== false) {
+                    addAIPoweredBadges();
+                }
+            } catch (aiError) {
+                console.warn('🤖 AI Update: Skipping due to initialization issues');
+            }
+        }, 100);
+        
+    } catch (error) {
+        console.error('❌ Inventory Update: Critical error in update cycle', error);
     }
-}
-        
-        // Update cart recommendations
-        showCartRecommendations();
-    });
+});
 }
 
 function updateAllRecommendations() {
@@ -3032,24 +3040,43 @@ class DynamicPricingEngine {
         return Math.max(minPrice, Math.min(maxPrice, optimalPrice));
     }
 
-    getDemandFactor(productId) {
-        // Simulate demand based on:
-        // - Recent views
-        // - Add to cart frequency
-        // - Inventory levels
-        const views = window.recommendationsEngine ? 
-            window.recommendationsEngine.userBehavior.viewedProducts.filter(id => id === productId).length : 0;
+ getDemandFactor(productId) {
+    // Robust demand factor calculation with fallbacks
+    let views = 0;
+    let carts = 0;
+    
+    try {
+        // Safe access to recommendations engine data
+        if (window.recommendationsEngine && 
+            window.recommendationsEngine.userBehavior && 
+            Array.isArray(window.recommendationsEngine.userBehavior.viewedProducts)) {
+            views = window.recommendationsEngine.userBehavior.viewedProducts
+                .filter(id => id === productId).length;
+        }
         
-        const carts = window.recommendationsEngine ?
-            window.recommendationsEngine.userBehavior.addedToCart.filter(id => id === productId).length : 0;
-        
-        const inventory = window.inventoryManager ? 
-            window.inventoryManager.getStockLevel(productId) : 10;
-        
-        const inventoryPressure = Math.max(0, 1 - (inventory / 20)); // 0-1 scale
-        
-        return Math.min(1, (views * 0.3 + carts * 0.5 + inventoryPressure * 0.2));
+        if (window.recommendationsEngine && 
+            window.recommendationsEngine.userBehavior && 
+            Array.isArray(window.recommendationsEngine.userBehavior.addedToCart)) {
+            carts = window.recommendationsEngine.userBehavior.addedToCart
+                .filter(id => id === productId).length;
+        }
+    } catch (error) {
+        console.warn('📊 AI Demand Factor: Using fallback data due to initialization delay');
+        // Fallback: simulate some demand based on product properties
+        const product = products.find(p => p.id === productId);
+        if (product) {
+            views = Math.floor((product.rating.reviews || 10) / 20);
+            carts = Math.floor((product.rating.reviews || 10) / 50);
+        }
     }
+    
+    const inventory = window.inventoryManager ? 
+        window.inventoryManager.getStockLevel(productId) : 10;
+    
+    const inventoryPressure = Math.max(0, 1 - (inventory / 20));
+    
+    return Math.min(1, (views * 0.3 + carts * 0.5 + inventoryPressure * 0.2));
+}
 
     getTimeFactor() {
         const now = new Date();
@@ -3278,6 +3305,12 @@ function enhanceProductDisplayWithAI() {
 }
 
 function addAIPoweredBadges() {
+    // Safety check - ensure AI systems are ready
+    if (!window.userAnalytics || !window.dynamicPricing || !window.personalizedRanking) {
+        console.log('🤖 AI Systems: Waiting for full initialization...');
+        return;
+    }
+    
     const productCards = document.querySelectorAll('.product-container');
     
     productCards.forEach(card => {
@@ -3289,8 +3322,8 @@ function addAIPoweredBadges() {
             existingAIBadge.remove();
         }
         
-        // Add AI-powered badges
-        if (window.userAnalytics && window.dynamicPricing) {
+        try {
+            // Add AI-powered badges with error handling
             const product = products.find(p => p.id === productId);
             const userPersona = window.userAnalytics.getUserPersona();
             
@@ -3317,36 +3350,55 @@ function addAIPoweredBadges() {
                     card.appendChild(badge);
                 }
                 
-                // Dynamic pricing indicator
-                const optimalPrice = window.dynamicPricing.calculateOptimalPrice(product, userPersona);
-                const priceDiff = optimalPrice - product.price;
-                
-                if (priceDiff < -0.01) {
-                    const discountBadge = document.createElement('div');
-                    discountBadge.className = 'ai-badge dynamic-price-badge';
-                    discountBadge.innerHTML = `<i class="fas fa-bolt"></i> AI Price`;
-                    discountBadge.style.cssText = `
-                        position: absolute;
-                        bottom: 80px;
-                        left: 12px;
-                        background: linear-gradient(135deg, #10b981, #34d399);
-                        color: white;
-                        padding: 4px 8px;
-                        border-radius: 6px;
-                        font-size: 0.65rem;
-                        font-weight: 700;
-                        z-index: 3;
-                    `;
-                    card.appendChild(discountBadge);
+                // Dynamic pricing indicator (with error handling)
+                try {
+                    const optimalPrice = window.dynamicPricing.calculateOptimalPrice(product, userPersona);
+                    const priceDiff = optimalPrice - product.price;
+                    
+                    if (priceDiff < -0.01) {
+                        const discountBadge = document.createElement('div');
+                        discountBadge.className = 'ai-badge dynamic-price-badge';
+                        discountBadge.innerHTML = `<i class="fas fa-bolt"></i> AI Price`;
+                        discountBadge.style.cssText = `
+                            position: absolute;
+                            bottom: 80px;
+                            left: 12px;
+                            background: linear-gradient(135deg, #10b981, #34d399);
+                            color: white;
+                            padding: 4px 8px;
+                            border-radius: 6px;
+                            font-size: 0.65rem;
+                            font-weight: 700;
+                            z-index: 3;
+                        `;
+                        card.appendChild(discountBadge);
+                    }
+                } catch (pricingError) {
+                    console.warn('💰 AI Pricing: Skipping price badge due to calculation error', pricingError);
                 }
             }
+        } catch (error) {
+            console.warn('🤖 AI Badges: Error processing product', productId, error);
+            // Continue with other products instead of breaking
         }
     });
 }
 
-// Initialize AI Personalization
+// Initialize AI Personalization with error handling
+function safeInitAIPersonalization() {
+    try {
+        initAIPersonalization();
+        console.log('🧠 AI Personalization: Successfully initialized');
+    } catch (error) {
+        console.error('❌ AI Personalization: Initialization failed, but core app continues', error);
+        // Set fallback flags to prevent further AI attempts
+        window.aiSystemsReady = false;
+    }
+}
+
+// Delay AI initialization to ensure core systems are ready
 setTimeout(() => {
-    initAIPersonalization();
-}, 2000);
+    safeInitAIPersonalization();
+}, 3000); // Increased delay for better core system readiness
 
 // END OF SECTION 5
