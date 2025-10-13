@@ -577,6 +577,94 @@ app.get('/api/analytics', (req, res) => {
   res.json({ success: true, analytics });
 });
 
+// ===== ENHANCED ADMIN ROUTES =====
+
+// Admin dashboard stats
+app.get('/api/admin/stats', (req, res) => {
+    const stats = {
+        overview: {
+            totalProducts: products.length,
+            totalOrders: orders.length,
+            totalRevenue: orders.reduce((sum, order) => sum + order.totals.total, 0),
+            totalCustomers: [...new Set(orders.map(order => order.userId))].length,
+            monthlyRevenue: calculateMonthlyRevenue(),
+            conversionRate: calculateConversionRate()
+        },
+        recentOrders: orders.slice(-10).reverse().map(order => ({
+            orderId: order.orderId,
+            createdAt: order.createdAt,
+            status: order.status,
+            totals: order.totals,
+            items: order.items.length
+        })),
+        lowStock: products.filter(p => 
+            p.inventory.stock <= p.inventory.lowStockThreshold
+        ).map(p => ({
+            productId: p.productId,
+            name: p.name,
+            inventory: p.inventory,
+            category: p.category
+        })),
+        topProducts: products
+            .sort((a, b) => b.aiData.demandFactor - a.aiData.demandFactor)
+            .slice(0, 5)
+            .map(p => ({
+                productId: p.productId,
+                name: p.name,
+                demand: p.aiData.demandFactor,
+                revenue: p.price * (p.aiData.conversionRate * p.aiData.viewCount)
+            }))
+    };
+
+    res.json({ success: true, stats });
+});
+
+// Get all orders for admin
+app.get('/api/admin/orders', (req, res) => {
+    const adminOrders = orders.map(order => ({
+        ...order,
+        customer: order.userId,
+        itemCount: order.items.length
+    })).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    res.json({ success: true, orders: adminOrders });
+});
+
+// Update order status
+app.put('/api/admin/orders/:orderId', (req, res) => {
+    const order = orders.find(o => o.orderId === req.params.orderId);
+    if (!order) {
+        return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    const { status } = req.body;
+    order.status = status;
+    order.updatedAt = new Date().toISOString();
+    
+    // Add to timeline
+    order.timeline.push({
+        status: status,
+        timestamp: new Date().toISOString(),
+        note: `Status updated to ${status}`
+    });
+
+    res.json({ success: true, order });
+});
+
+// Helper functions
+function calculateMonthlyRevenue() {
+    const currentMonth = new Date().getMonth();
+    return orders
+        .filter(order => new Date(order.createdAt).getMonth() === currentMonth)
+        .reduce((sum, order) => sum + order.totals.total, 0);
+}
+
+function calculateConversionRate() {
+    const totalViews = products.reduce((sum, p) => sum + p.aiData.viewCount, 0);
+    const totalSales = orders.reduce((sum, order) => sum + order.items.length, 0);
+    return totalViews > 0 ? (totalSales / totalViews) * 100 : 0;
+}
+
 // ===== START SERVER =====
 app.listen(PORT, () => {
   console.log('='.repeat(60));

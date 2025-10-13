@@ -440,76 +440,59 @@ function addToCart(productId) {
 }
 
 // ===== PRODUCTS DATA INITIALIZATION =====
+// ===== ADVANCED PRODUCTS INITIALIZATION =====
 async function initializeProducts() {
-    console.log('🔄 Initializing products...');
+    console.log('🔄 Initializing products with backend...');
     
     try {
-        // Ensure products are available globally with fallback
-        let loadedProducts = [];
+        // Check backend health
+        const backendAvailable = await window.advancedApi.healthCheck();
         
-        // Try localStorage first
-        const savedProducts = localStorage.getItem('swiftbuy_products');
-        if (savedProducts) {
-            loadedProducts = JSON.parse(savedProducts);
-            console.log(`📦 Loaded ${loadedProducts.length} products from localStorage`);
+        if (backendAvailable) {
+            // Load from backend
+            const result = await window.advancedApi.getProducts();
+            products = result.products;
+            console.log(`✅ Loaded ${products.length} products from backend`);
+            
+            // Enhance products with AI data from backend
+            products = products.map(product => ({
+                ...product,
+                // Ensure compatibility with your existing frontend
+                id: product.productId,
+                image: product.images ? product.images[0] : product.image,
+                rating: {
+                    stars: product.rating.average ? '★'.repeat(Math.floor(product.rating.average)) + '☆'.repeat(5 - Math.floor(product.rating.average)) : '★★★★☆',
+                    reviews: product.rating.count || 128
+                },
+                inventory: product.inventory || { stock: 10, lowStockThreshold: 3 }
+            }));
         } else {
-            // Fallback to module
-            try {
-                const module = await import('./products.js');
-                if (module && module.products) {
-                    loadedProducts = module.products;
-                    console.log(`📦 Loaded ${loadedProducts.length} products from module`);
-                    
-                    // Enhance products with default data
-                    loadedProducts = loadedProducts.map(product => ({
-                        ...product,
-                        rating: product.rating || { 
-                            stars: (Math.random() * 1 + 4).toFixed(1),
-                            reviews: Math.floor(Math.random() * 200) + 10 
-                        },
-                        inventory: product.inventory || { 
-                            stock: Math.floor(Math.random() * 30) + 5, 
-                            lowStockThreshold: 3 
-                        },
-                        category: product.category || 'uncategorized',
-                        freeShipping: product.freeShipping !== undefined ? product.freeShipping : true,
-                        isNew: product.isNew || false,
-                        isFeatured: product.isFeatured || false,
-                        isTrending: product.isTrending || false
-                    }));
-                    
-                    localStorage.setItem('swiftbuy_products', JSON.stringify(loadedProducts));
-                }
-            } catch (moduleError) {
-                console.warn('Products module not available, using fallback data', moduleError);
-                loadFallbackProducts();
-                loadedProducts = products; // Use the global products from fallback
-            }
+            // Fallback to localStorage
+            throw new Error('Backend unavailable');
         }
-        
-        // CRITICAL FIX: Ensure products are properly assigned to global variables
-        products = loadedProducts;
-        window.products = products; // Ensure global availability
-        
-        if (!products || products.length === 0) {
-            console.warn('⚠️ Products array empty, loading fallback...');
-            loadFallbackProducts();
-            products = window.products; // Re-assign from fallback
-        }
-        
-        console.log(`✅ Successfully initialized ${products.length} products`);
-        console.log('🔍 Global products check:', window.products?.length, 'products available');
-        
-        return true;
         
     } catch (error) {
-        console.error('❌ Failed to initialize products:', error);
-        // Ensure we have some products even if initialization fails
-        if (!products || products.length === 0) {
-            loadFallbackProducts();
+        console.warn('❌ Backend failed, using localStorage fallback:', error);
+        
+        // Your existing localStorage fallback logic
+        const savedProducts = localStorage.getItem('swiftbuy_products');
+        if (savedProducts) {
+            products = JSON.parse(savedProducts);
+            console.log(`📦 Using ${products.length} products from localStorage`);
+        } else {
+            // Ultimate fallback
+            await loadFallbackProducts();
         }
-        return false;
     }
+    
+    // Ensure global availability
+    window.products = products;
+    console.log(`🎉 Products system ready! ${products.length} products loaded`);
+    
+    // Render products
+    renderProducts(products);
+    
+    return true;
 }
 
 function loadFallbackProducts() {
