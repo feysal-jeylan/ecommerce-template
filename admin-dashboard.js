@@ -436,7 +436,13 @@ constructor() {
     this.productSearchHandler = null;
     this.loadingAnalytics = false;
     this.isResizing = false;
-    this.lastViewport = window.innerWidth; // ← ADD THIS LINE
+    this.lastViewport = window.innerWidth;
+    
+    // BACKEND INTEGRATION PROPERTIES
+    this.API_BASE_URL = 'http://localhost:5000/api';
+    this.authToken = localStorage.getItem('admin_auth_token');
+    this.isOnline = true;
+    
     this.init();
 }
 
@@ -683,6 +689,101 @@ navigateDateRange(direction) {
     this.changeDateRange(ranges[newIndex]);
     this.showToast(`Switched to ${ranges[newIndex]} view`);
 }
+
+    // ===== BACKEND API METHODS =====
+    async apiRequest(endpoint, options = {}) {
+        const url = `${this.API_BASE_URL}${endpoint}`;
+        const config = {
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${this.authToken}`
+            },
+            ...options
+        };
+
+        try {
+            const response = await fetch(url, config);
+            
+            if (response.status === 401) {
+                this.handleUnauthorized();
+                throw new Error('Authentication required');
+            }
+            
+            if (!response.ok) {
+                throw new Error(`API Error: ${response.status}`);
+            }
+            
+            return await response.json();
+        } catch (error) {
+            console.error('API Request failed:', error);
+            this.handleApiError(error);
+            throw error;
+        }
+    }
+
+    handleUnauthorized() {
+        localStorage.removeItem('admin_auth_token');
+        window.location.href = '/admin-login.html';
+    }
+
+    handleApiError(error) {
+        if (!navigator.onLine) {
+            this.showToast('You are offline. Using local storage.', 'warning');
+            this.isOnline = false;
+        } else {
+            this.showToast('Server connection failed. Using local storage.', 'error');
+        }
+    }
+
+    // Hybrid data loading - tries API first, falls back to localStorage
+    async loadAllData() {
+        try {
+            if (this.authToken && this.isOnline) {
+                await this.loadDataFromAPI();
+            } else {
+                this.loadDataFromLocalStorage();
+            }
+        } catch (error) {
+            console.warn('API load failed, using localStorage:', error);
+            this.loadDataFromLocalStorage();
+        }
+        
+        this.calculateAnalytics();
+        this.generateNotifications();
+    }
+
+    async loadDataFromAPI() {
+        try {
+            const [productsData, ordersData, customersData] = await Promise.all([
+                this.apiRequest('/products'),
+                this.apiRequest('/orders'),
+                this.apiRequest('/customers')
+            ]);
+            
+            this.products = productsData;
+            this.orders = ordersData;
+            this.customers = customersData;
+            
+            // Sync to localStorage as backup
+            this.syncToLocalStorage();
+            
+        } catch (error) {
+            throw new Error('Failed to load data from API');
+        }
+    }
+
+    loadDataFromLocalStorage() {
+        this.products = JSON.parse(localStorage.getItem('swiftbuy_products') || '[]');
+        this.orders = JSON.parse(localStorage.getItem('swiftbuy_orders') || '[]');
+        this.loadCustomers(); // Use existing customer extraction logic
+    }
+
+    syncToLocalStorage() {
+        localStorage.setItem('swiftbuy_products', JSON.stringify(this.products));
+        localStorage.setItem('swiftbuy_orders', JSON.stringify(this.orders));
+    }
+
+
     // ===== DATA MANAGEMENT =====
     loadAllData() {
         this.loadOrders();
@@ -748,7 +849,7 @@ loadProducts() {
 }
 
 
-addProduct(productData) {
+async addProduct(productData) {
     try {
         // Generate a unique ID if not provided
         if (!productData.id) {
@@ -778,23 +879,36 @@ addProduct(productData) {
             featured: productData.featured || false,
             onSale: productData.onSale || false,
             createdAt: new Date().toISOString(),
-            ...productData // Spread any additional properties
+            ...productData
         };
 
-        // Add to products array
-        this.products.push(newProduct);
+        // Try API first, fallback to localStorage
+        if (this.authToken && this.isOnline) {
+            try {
+                const savedProduct = await this.apiRequest('/products', {
+                    method: 'POST',
+                    body: JSON.stringify(newProduct)
+                });
+                this.products.push(savedProduct);
+            } catch (apiError) {
+                throw new Error('Failed to save product to server');
+            }
+        } else {
+            // Local storage fallback
+            this.products.push(newProduct);
+            
+            // Update inventory in localStorage
+            const inventory = JSON.parse(localStorage.getItem('swiftbuy_inventory_v1') || '{}');
+            inventory[newProduct.id] = {
+                stock: newProduct.inventory.stock,
+                lowStockThreshold: newProduct.inventory.lowStockThreshold,
+                reserved: 0
+            };
+            localStorage.setItem('swiftbuy_inventory_v1', JSON.stringify(inventory));
+        }
         
-        // Update inventory in localStorage
-        const inventory = JSON.parse(localStorage.getItem('swiftbuy_inventory_v1') || '{}');
-        inventory[newProduct.id] = {
-            stock: newProduct.inventory.stock,
-            lowStockThreshold: newProduct.inventory.lowStockThreshold,
-            reserved: 0
-        };
-        localStorage.setItem('swiftbuy_inventory_v1', JSON.stringify(inventory));
-        
-        // Save products to localStorage
-        this.saveProducts();
+        // Save products to appropriate storage
+        await this.saveProducts();
         
         // Update UI
         this.updateProductsSection();
@@ -805,32 +919,36 @@ addProduct(productData) {
         return newProduct;
     } catch (error) {
         console.error('❌ Error adding product:', error);
-        this.showToast('Error adding product', 'error');
+        this.showToast('Error adding product: ' + error.message, 'error');
         return null;
     }
 }
 
 // Add this function to save products when they are modified
-saveProducts() {
+async saveProducts() {
     try {
         console.log('💾 Attempting to save', this.products.length, 'products...');
         
-        const productsJSON = JSON.stringify(this.products);
-        console.log('📦 Products JSON size:', productsJSON.length, 'characters');
+        if (this.authToken && this.isOnline) {
+            // Sync to backend API
+            for (const product of this.products) {
+                try {
+                    await this.apiRequest(`/products/${product.id}`, {
+                        method: 'PUT',
+                        body: JSON.stringify(product)
+                    });
+                } catch (error) {
+                    console.warn(`Failed to sync product ${product.id}:`, error);
+                }
+            }
+        }
         
+        // Always maintain localStorage as backup
+        const productsJSON = JSON.stringify(this.products);
         localStorage.setItem('swiftbuy_products', productsJSON);
         
-        // Verify the save worked
-        const savedProducts = JSON.parse(localStorage.getItem('swiftbuy_products') || '[]');
-        console.log('✅ Save verification:', savedProducts.length, 'products saved');
-        
-        if (savedProducts.length === this.products.length) {
-            console.log('✅ Products saved successfully to localStorage');
-            return true;
-        } else {
-            console.error('❌ Save verification failed: count mismatch');
-            return false;
-        }
+        console.log('✅ Products saved successfully');
+        return true;
         
     } catch (error) {
         console.error('❌ Failed to save products:', error);
