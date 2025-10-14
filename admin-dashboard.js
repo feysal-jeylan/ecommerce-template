@@ -7241,6 +7241,7 @@ setupAddProductModal() {
     const publishBtn = document.getElementById('publish-product');
     const uploadArea = document.getElementById('image-upload-area');
     const imageUpload = document.getElementById('product-image-upload');
+    const imageUrlInput = document.getElementById('new-product-image-url');
 
     const closeModal = () => {
         modal.classList.remove('active');
@@ -7258,30 +7259,8 @@ setupAddProductModal() {
         this.publishNewProduct();
     });
 
-    // Image upload handling
-    uploadArea?.addEventListener('click', () => {
-        imageUpload?.click();
-    });
-
-    imageUpload?.addEventListener('change', (e) => {
-        this.handleImageUpload(e.target.files);
-    });
-
-    // Drag and drop for images
-    uploadArea?.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        uploadArea.classList.add('dragover');
-    });
-
-    uploadArea?.addEventListener('dragleave', () => {
-        uploadArea.classList.remove('dragover');
-    });
-
-    uploadArea?.addEventListener('drop', (e) => {
-        e.preventDefault();
-        uploadArea.classList.remove('dragover');
-        this.handleImageUpload(e.dataTransfer.files);
-    });
+    // Enhanced image upload handling with drag & drop
+    this.setupEnhancedImageUpload(uploadArea, imageUpload, imageUrlInput);
 
     // Auto-generate SKU
     document.getElementById('new-product-name')?.addEventListener('blur', (e) => {
@@ -7299,6 +7278,220 @@ setupAddProductModal() {
             closeModal();
         }
     });
+}
+
+// Enhanced image upload with drag & drop
+setupEnhancedImageUpload(uploadArea, imageUpload, imageUrlInput) {
+    if (!uploadArea) return;
+
+    // Click to upload
+    uploadArea.addEventListener('click', () => {
+        imageUpload?.click();
+    });
+
+    // File selection handling
+    imageUpload?.addEventListener('change', (e) => {
+        this.handleImageUpload(e.target.files);
+    });
+
+    // Drag and drop functionality
+    uploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadArea.classList.add('dragover');
+        uploadArea.innerHTML = `
+            <div class="upload-prompt">
+                <i class="fas fa-cloud-upload-alt"></i>
+                <p>Drop image here to upload</p>
+            </div>
+        `;
+    });
+
+    uploadArea.addEventListener('dragleave', () => {
+        uploadArea.classList.remove('dragover');
+        this.updateUploadAreaDisplay();
+    });
+
+    uploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadArea.classList.remove('dragover');
+        this.handleImageUpload(e.dataTransfer.files);
+    });
+
+    // URL input handling
+    imageUrlInput?.addEventListener('blur', (e) => {
+        if (e.target.value && this.isValidImageUrl(e.target.value)) {
+            this.handleImageUrlUpload(e.target.value);
+        }
+    });
+
+    // Initial display
+    this.updateUploadAreaDisplay();
+}
+
+// Update upload area display based on state
+updateUploadAreaDisplay() {
+    const uploadArea = document.getElementById('image-upload-area');
+    const previewContainer = document.getElementById('image-preview');
+    const hasImages = previewContainer && previewContainer.children.length > 0;
+
+    if (!uploadArea) return;
+
+    if (hasImages) {
+        uploadArea.style.display = 'none';
+    } else {
+        uploadArea.style.display = 'flex';
+        uploadArea.innerHTML = `
+            <div class="upload-prompt">
+                <i class="fas fa-cloud-upload-alt"></i>
+                <h4>Upload Product Image</h4>
+                <p>Drag & drop or click to browse</p>
+                <small>Supports JPG, PNG, GIF • Max 5MB</small>
+            </div>
+        `;
+    }
+}
+
+// Handle image file upload
+async handleImageUpload(files) {
+    const previewContainer = document.getElementById('image-preview');
+    if (!previewContainer) return;
+
+    // Clear previous previews
+    previewContainer.innerHTML = '';
+
+    Array.from(files).forEach(async (file) => {
+        if (!file.type.startsWith('image/')) {
+            this.showToast('Please upload only image files', 'error');
+            return;
+        }
+
+        // Check file size (5MB limit)
+        if (file.size > 5 * 1024 * 1024) {
+            this.showToast('Image must be smaller than 5MB', 'error');
+            return;
+        }
+
+        // Show uploading state
+        const previewItem = this.createUploadingPreview(file);
+        previewContainer.appendChild(previewItem);
+
+        try {
+            // Upload to backend
+            const imageUrl = await this.uploadImageToServer(file);
+            
+            // Update preview with uploaded image
+            previewItem.innerHTML = this.createImagePreviewHTML(imageUrl, file.name, file.size);
+            
+            // Set the image URL in the form
+            document.getElementById('new-product-image-url').value = imageUrl;
+            
+            this.showToast('Image uploaded successfully!', 'success');
+            
+        } catch (error) {
+            console.error('Image upload error:', error);
+            previewItem.remove();
+            this.showToast('Failed to upload image: ' + error.message, 'error');
+        }
+    });
+
+    this.updateUploadAreaDisplay();
+}
+
+// Upload image to backend server
+async uploadImageToServer(file) {
+    const formData = new FormData();
+    formData.append('image', file);
+
+    try {
+        const response = await fetch(`${this.API_BASE_URL}/products/upload`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${this.authToken}`
+                // Note: Don't set Content-Type for FormData, let browser set it
+            },
+            body: formData
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Upload failed');
+        }
+
+        const data = await response.json();
+        return data.imageUrl;
+
+    } catch (error) {
+        // Fallback to base64 if upload fails
+        console.warn('Server upload failed, using base64:', error);
+        return await this.convertToBase64(file);
+    }
+}
+
+// Convert file to base64 (fallback)
+convertToBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result);
+        reader.onerror = (error) => reject(error);
+        reader.readAsDataURL(file);
+    });
+}
+
+// Handle image URL upload
+handleImageUrlUpload(imageUrl) {
+    const previewContainer = document.getElementById('image-preview');
+    if (!previewContainer) return;
+
+    previewContainer.innerHTML = this.createImagePreviewHTML(imageUrl, 'External Image', 0);
+    this.updateUploadAreaDisplay();
+    this.showToast('External image URL added', 'success');
+}
+
+// Create uploading preview
+createUploadingPreview(file) {
+    const previewItem = document.createElement('div');
+    previewItem.className = 'preview-item uploading';
+    previewItem.innerHTML = `
+        <div class="uploading-spinner">
+            <div class="spinner"></div>
+            <p>Uploading ${file.name}...</p>
+            <div class="progress-bar">
+                <div class="progress-fill"></div>
+            </div>
+        </div>
+    `;
+    return previewItem;
+}
+
+// Create image preview HTML
+createImagePreviewHTML(imageUrl, fileName, fileSize) {
+    const sizeText = fileSize ? this.formatFileSize(fileSize) : 'External';
+    
+    return `
+        <div class="preview-image">
+            <img src="${imageUrl}" alt="Preview" onerror="this.src='https://via.placeholder.com/300x200?text=Image+Error'">
+            <div class="preview-overlay">
+                <button type="button" class="preview-remove" onclick="this.closest('.preview-item').remove(); adminDashboard.updateUploadAreaDisplay()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+        <div class="preview-info">
+            <span class="file-name">${fileName}</span>
+            <span class="file-size">${sizeText}</span>
+            <span class="preview-status success">Ready</span>
+        </div>
+    `;
+}
+
+// Validate image URL
+isValidImageUrl(url) {
+    try {
+        const parsedUrl = new URL(url);
+        return parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:';
+    } catch {
+        return false;
+    }
 }
 
 openAddProductModal() {

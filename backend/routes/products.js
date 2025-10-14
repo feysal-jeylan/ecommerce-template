@@ -348,4 +348,32 @@ router.patch('/bulk', async (req, res) => {
     }
 });
 
+// Upload image endpoint
+router.post('/upload', upload.single('image'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'No image file provided' });
+        }
+
+        const imageUrl = `/uploads/products/${req.file.filename}`;
+        
+        res.json({
+            message: 'Image uploaded successfully',
+            imageUrl: imageUrl,
+            filename: req.file.filename,
+            size: req.file.size
+        });
+
+    } catch (error) {
+        console.error('Image upload error:', error);
+        
+        // Clean up file if error occurred
+        if (req.file) {
+            fs.unlinkSync(req.file.path);
+        }
+        
+        res.status(500).json({ error: 'Image upload failed: ' + error.message });
+    }
+});
+
 module.exports = router;

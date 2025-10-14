@@ -5498,3 +5498,233 @@ body .admin-container .admin-main .admin-content {
     --admin-border: #dddddd !important;
   }
 }
+
+/* Enhanced Image Upload Styles */
+.image-upload-area {
+    border: 2px dashed #d1d5db;
+    border-radius: 12px;
+    padding: 40px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: #f8fafc;
+    margin-bottom: 20px;
+}
+
+.image-upload-area:hover {
+    border-color: #3b82f6;
+    background: #f0f9ff;
+}
+
+.image-upload-area.dragover {
+    border-color: #3b82f6;
+    background: #dbeafe;
+    transform: scale(1.02);
+}
+
+.upload-prompt {
+    color: #6b7280;
+}
+
+.upload-prompt i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    color: #9ca3af;
+}
+
+.image-upload-area:hover .upload-prompt i {
+    color: #3b82f6;
+}
+
+.upload-prompt h4 {
+    margin: 0 0 8px 0;
+    color: #374151;
+}
+
+.upload-prompt p {
+    margin: 0 0 8px 0;
+    font-size: 14px;
+}
+
+.upload-prompt small {
+    color: #9ca3af;
+    font-size: 12px;
+}
+
+/* Image Preview Styles */
+.image-preview {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.preview-item {
+    position: relative;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    overflow: hidden;
+    background: white;
+    transition: all 0.3s ease;
+}
+
+.preview-item:hover {
+    border-color: #3b82f6;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
+}
+
+.preview-image {
+    position: relative;
+    aspect-ratio: 1;
+    overflow: hidden;
+}
+
+.preview-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.preview-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.preview-item:hover .preview-overlay {
+    opacity: 1;
+}
+
+.preview-remove {
+    background: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.preview-remove:hover {
+    background: #dc2626;
+    transform: scale(1.1);
+}
+
+.preview-info {
+    padding: 12px;
+    background: #f8fafc;
+}
+
+.file-name {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: #374151;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.file-size {
+    font-size: 11px;
+    color: #6b7280;
+}
+
+.preview-status {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.preview-status.success {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.preview-status.uploading {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+/* Uploading State */
+.preview-item.uploading {
+    border-style: dashed;
+    border-color: #f59e0b;
+}
+
+.uploading-spinner {
+    padding: 30px 20px;
+    text-align: center;
+    color: #6b7280;
+}
+
+.spinner {
+    width: 30px;
+    height: 30px;
+    border: 3px solid #e5e7eb;
+    border-top: 3px solid #3b82f6;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 16px auto;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.progress-bar {
+    width: 100%;
+    height: 4px;
+    background: #e5e7eb;
+    border-radius: 2px;
+    margin-top: 12px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: #3b82f6;
+    width: 0%;
+    animation: progress 2s ease-in-out infinite;
+}
+
+@keyframes progress {
+    0% { width: 0%; }
+    50% { width: 70%; }
+    100% { width: 100%; }
+}
+
+/* Form enhancements */
+.form-group-image {
+    margin-bottom: 24px;
+}
+
+.image-upload-options {
+    display: flex;
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.image-upload-options .form-input {
+    flex: 1;
+}
+
+.image-url-hint {
+    font-size: 12px;
+    color: #6b7280;
+    margin-top: 4px;
+}
