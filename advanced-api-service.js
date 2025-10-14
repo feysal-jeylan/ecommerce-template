@@ -1,187 +1,343 @@
-// Advanced Admin Dashboard Backend Service
-class AdminApiService {
-    constructor() {
-        this.baseURL = 'http://localhost:5000/api';
+// ===== ADVANCED PRODUCT API SERVICE =====
+class ProductApiService {
+  constructor() {
+    this.baseURL = 'http://localhost:5000/api';
+    this.cache = new Map();
+    this.cacheTimeout = 5 * 60 * 1000; // 5 minutes
+  }
+
+  // Generic request handler with caching
+  async request(endpoint, options = {}) {
+    const cacheKey = endpoint + JSON.stringify(options.body || {});
+    
+    // Check cache first
+    if (options.method === 'GET' && this.cache.has(cacheKey)) {
+      const cached = this.cache.get(cacheKey);
+      if (Date.now() - cached.timestamp < this.cacheTimeout) {
+        console.log('📦 Using cached response for:', endpoint);
+        return cached.data;
+      }
     }
 
-    async request(endpoint, options = {}) {
-        try {
-            const url = `${this.baseURL}${endpoint}`;
-            const config = {
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...options.headers,
-                },
-                ...options,
-            };
+    try {
+      const url = `${this.baseURL}${endpoint}`;
+      const config = {
+        headers: {
+          'Content-Type': 'application/json',
+          ...options.headers,
+        },
+        ...options,
+      };
 
-            if (options.body) {
-                config.body = JSON.stringify(options.body);
-            }
+      if (options.body) {
+        config.body = JSON.stringify(options.body);
+      }
 
-            const response = await fetch(url, config);
-            const data = await response.json();
-            
-            if (!response.ok) {
-                throw new Error(data.message || `HTTP ${response.status}`);
-            }
+      console.log('🔄 API Request:', { endpoint, config });
 
-            return data;
-        } catch (error) {
-            console.error('Admin API request failed:', error);
-            throw error;
+      const response = await fetch(url, config);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      
+      // Cache successful GET requests
+      if (options.method === 'GET' && data.success) {
+        this.cache.set(cacheKey, {
+          data,
+          timestamp: Date.now()
+        });
+      }
+
+      return data;
+
+    } catch (error) {
+      console.error('❌ API Request Failed:', error);
+      
+      // Return cached data as fallback if available
+      if (options.method === 'GET' && this.cache.has(cacheKey)) {
+        console.log('🔄 Using cached fallback due to network error');
+        return this.cache.get(cacheKey).data;
+      }
+      
+      throw error;
+    }
+  }
+
+  // ===== PRODUCT OPERATIONS =====
+
+  // Get all products with filtering and pagination
+  async getProducts(filters = {}) {
+    const params = new URLSearchParams();
+    
+    Object.keys(filters).forEach(key => {
+      if (filters[key] !== undefined && filters[key] !== '') {
+        params.append(key, filters[key]);
+      }
+    });
+
+    const endpoint = `/products?${params.toString()}`;
+    return this.request(endpoint);
+  }
+
+  // Get single product with enhanced data
+  async getProduct(productId) {
+    if (!productId) {
+      throw new Error('Product ID is required');
+    }
+    return this.request(`/products/${productId}`);
+  }
+
+  // Search products with suggestions
+  async searchProducts(query, limit = 10) {
+    return this.request(`/products/search/suggestions?q=${encodeURIComponent(query)}&limit=${limit}`);
+  }
+
+  // Update product inventory (real-time sync)
+  async updateInventory(productId, action, quantity) {
+    if (!['reserve', 'release', 'sell', 'restock'].includes(action)) {
+      throw new Error('Invalid inventory action');
+    }
+
+    return this.request(`/products/${productId}/inventory`, {
+      method: 'PUT',
+      body: { action, quantity }
+    });
+  }
+
+  // ===== ADMIN PRODUCT OPERATIONS =====
+
+  // Create new product
+  async createProduct(productData) {
+    return this.request('/admin/products', {
+      method: 'POST',
+      body: productData
+    });
+  }
+
+  // Update product
+  async updateProduct(productId, updates) {
+    return this.request(`/admin/products/${productId}`, {
+      method: 'PUT',
+      body: updates
+    });
+  }
+
+  // Bulk product operations
+  async bulkProductOperation(action, productIds, data) {
+    return this.request('/admin/products/bulk', {
+      method: 'POST',
+      body: { action, productIds, data }
+    });
+  }
+
+  // ===== INVENTORY MANAGEMENT =====
+
+  // Get low stock alerts
+  async getLowStockAlerts(threshold = 5) {
+    const products = await this.getProducts({ inStock: true });
+    
+    if (!products.success) return { success: true, lowStockItems: [] };
+
+    const lowStockItems = products.products.filter(product => {
+      const availableStock = product.inventory.stock - product.inventory.reserved;
+      return availableStock > 0 && availableStock <= threshold;
+    });
+
+    return {
+      success: true,
+      lowStockItems,
+      threshold
+    };
+  }
+
+  // Get inventory analytics
+  async getInventoryAnalytics() {
+    const products = await this.getProducts();
+    
+    if (!products.success) {
+      return {
+        success: true,
+        analytics: {
+          totalProducts: 0,
+          inStock: 0,
+          lowStock: 0,
+          outOfStock: 0,
+          totalStockValue: 0
         }
+      };
     }
 
-    // ===== DASHBOARD ANALYTICS =====
-    async getDashboardStats() {
-        return this.request('/admin/stats');
-    }
+    const analytics = {
+      totalProducts: products.products.length,
+      inStock: products.products.filter(p => p.inventory.stock > 0).length,
+      lowStock: products.products.filter(p => 
+        p.inventory.stock > 0 && 
+        p.inventory.stock <= p.inventory.lowStockThreshold
+      ).length,
+      outOfStock: products.products.filter(p => p.inventory.stock === 0).length,
+      totalStockValue: products.products.reduce((sum, product) => 
+        sum + (product.price * product.inventory.stock), 0
+      )
+    };
 
-    async getAnalytics() {
-        return this.request('/analytics');
-    }
+    return {
+      success: true,
+      analytics
+    };
+  }
 
-    // ===== PRODUCT MANAGEMENT =====
-    async getAllProducts() {
-        return this.request('/products');
-    }
+  // ===== CACHE MANAGEMENT =====
 
-    async updateProduct(productId, updates) {
-        return this.request(`/admin/products/${productId}`, {
-            method: 'PUT',
-            body: updates
-        });
-    }
+  clearCache() {
+    this.cache.clear();
+    console.log('🗑️ Product cache cleared');
+  }
 
-    async updateInventory(productId, stockData) {
-        return this.request(`/admin/products/${productId}`, {
-            method: 'PUT',
-            body: { inventory: stockData }
-        });
-    }
+  // Preload essential products
+  async preloadEssentialProducts() {
+    try {
+      console.log('🔄 Preloading essential products...');
+      
+      const [featured, trending, newArrivals] = await Promise.all([
+        this.getProducts({ featured: 'true', limit: 8 }),
+        this.getProducts({ trending: 'true', limit: 6 }),
+        this.getProducts({ sortBy: 'newest', limit: 4 })
+      ]);
 
-    // ===== ORDER MANAGEMENT =====
-    async getAllOrders() {
-        return this.request('/admin/orders');
-    }
+      console.log('✅ Essential products preloaded');
+      
+      return {
+        featured: featured.success ? featured.products : [],
+        trending: trending.success ? trending.products : [],
+        newArrivals: newArrivals.success ? newArrivals.products : []
+      };
 
-    async updateOrderStatus(orderId, status) {
-        return this.request(`/admin/orders/${orderId}`, {
-            method: 'PUT',
-            body: { status }
-        });
+    } catch (error) {
+      console.warn('⚠️ Product preloading failed, using fallback');
+      return {
+        featured: [],
+        trending: [],
+        newArrivals: []
+      };
     }
-
-    // ===== REAL-TIME DATA =====
-    async getRealTimeStats() {
-        const [stats, analytics, orders] = await Promise.all([
-            this.getDashboardStats(),
-            this.getAnalytics(),
-            this.getAllOrders()
-        ]);
-
-        return {
-            overview: stats.stats.overview,
-            analytics: analytics.analytics,
-            recentOrders: stats.stats.recentOrders,
-            lowStock: stats.stats.lowStock,
-            topProducts: stats.stats.topProducts,
-            allOrders: orders.orders
-        };
-    }
+  }
 }
 
 // Create global instance
-window.adminApi = new AdminApiService();
+window.productApi = new ProductApiService();
 
-// Admin dashboard initialization
-window.initializeAdminDashboard = async function() {
-    try {
-        console.log('🔄 Initializing Admin Dashboard with backend data...');
-        
-        const dashboardData = await window.adminApi.getRealTimeStats();
-        
-        // Update dashboard with real data
-        updateDashboardUI(dashboardData);
-        
-        console.log('✅ Admin Dashboard connected to backend!');
-        
-    } catch (error) {
-        console.error('❌ Admin backend connection failed:', error);
-        // Fallback to localStorage data
-        initializeAdminFallback();
+// Initialize product API service
+window.initializeProductAPI = async function() {
+  try {
+    console.log('🚀 Initializing Product API Service...');
+    
+    // Test backend connectivity
+    const healthCheck = await window.productApi.request('/health');
+    
+    if (healthCheck.status === 'OK') {
+      console.log('✅ Backend connected successfully');
+      
+      // Preload essential data
+      await window.productApi.preloadEssentialProducts();
+      
+      // Initialize real-time inventory sync
+      initializeInventorySync();
+      
+      return true;
+    } else {
+      throw new Error('Backend health check failed');
     }
+    
+  } catch (error) {
+    console.warn('❌ Backend connection failed, using offline mode:', error);
+    
+    // Initialize offline fallbacks
+    initializeOfflineProductSystem();
+    
+    return false;
+  }
 };
 
-// Update UI with real data
-function updateDashboardUI(data) {
-    // Update overview cards
-    updateOverviewCards(data.overview);
-    
-    // Update recent orders table
-    updateOrdersTable(data.recentOrders);
-    
-    // Update low stock alerts
-    updateLowStockAlerts(data.lowStock);
-    
-    // Update product management
-    updateProductManagement(data.analytics.products);
-    
-    // Update charts and analytics
-    updateAnalyticsCharts(data.analytics);
+// Real-time inventory synchronization
+function initializeInventorySync() {
+  console.log('🔄 Initializing real-time inventory sync...');
+  
+  // Listen for cart updates and sync inventory
+  window.addEventListener('cartUpdated', async () => {
+    try {
+      // Refresh product data to reflect inventory changes
+      window.productApi.clearCache();
+      
+      // Update any active product displays
+      if (window.inventorySync) {
+        window.inventorySync.refreshAll();
+      }
+      
+    } catch (error) {
+      console.warn('⚠️ Inventory sync failed:', error);
+    }
+  });
+
+  // Periodic inventory sync (every 2 minutes)
+  setInterval(async () => {
+    try {
+      window.productApi.clearCache();
+      console.log('🔄 Periodic inventory sync completed');
+    } catch (error) {
+      console.warn('⚠️ Periodic sync failed:', error);
+    }
+  }, 2 * 60 * 1000);
 }
 
-function updateOverviewCards(overview) {
-    const cards = {
-        'total-products': overview.totalProducts,
-        'total-orders': overview.totalOrders,
-        'total-revenue': `$${overview.totalRevenue.toFixed(2)}`,
-        'total-customers': overview.totalCustomers
+// Offline fallback system
+function initializeOfflineProductSystem() {
+  console.log('📴 Initializing offline product system...');
+  
+  // Use localStorage as fallback data source
+  const savedProducts = localStorage.getItem('swiftbuy_products');
+  
+  if (!savedProducts) {
+    console.warn('⚠️ No offline product data available');
+    return;
+  }
+  
+  // Mock API methods for offline use
+  window.productApi.getProducts = async function(filters = {}) {
+    let products = JSON.parse(savedProducts);
+    
+    // Apply basic filtering
+    if (filters.category && filters.category !== 'all') {
+      products = products.filter(p => 
+        p.category.toLowerCase().includes(filters.category.toLowerCase())
+      );
+    }
+    
+    if (filters.search) {
+      const searchTerm = filters.search.toLowerCase();
+      products = products.filter(p => 
+        p.name.toLowerCase().includes(searchTerm) ||
+        p.category.toLowerCase().includes(searchTerm)
+      );
+    }
+    
+    return {
+      success: true,
+      products,
+      pagination: {
+        currentPage: 1,
+        totalPages: 1,
+        totalProducts: products.length,
+        hasNext: false,
+        hasPrev: false
+      },
+      offline: true
     };
-
-    Object.keys(cards).forEach(cardId => {
-        const element = document.getElementById(cardId);
-        if (element) {
-            element.textContent = cards[cardId];
-        }
-    });
+  };
+  
+  console.log('✅ Offline product system ready');
 }
 
-function updateOrdersTable(orders) {
-    const tbody = document.querySelector('#recent-orders tbody');
-    if (!tbody) return;
-
-    tbody.innerHTML = orders.map(order => `
-        <tr>
-            <td>${order.orderId}</td>
-            <td>${new Date(order.createdAt).toLocaleDateString()}</td>
-            <td>$${order.totals.total.toFixed(2)}</td>
-            <td><span class="status-badge status-${order.status}">${order.status}</span></td>
-            <td>
-                <button class="btn-action" onclick="viewOrder('${order.orderId}')">View</button>
-            </td>
-        </tr>
-    `).join('');
-}
-
-function updateLowStockAlerts(lowStockItems) {
-    const container = document.getElementById('low-stock-alerts');
-    if (!container) return;
-
-    container.innerHTML = lowStockItems.map(product => `
-        <div class="alert-item">
-            <div class="alert-product">${product.name}</div>
-            <div class="alert-stock">Stock: ${product.inventory.stock}</div>
-            <button class="btn-restock" onclick="restockProduct('${product.productId}')">Restock</button>
-        </div>
-    `).join('');
-}
-
-// Fallback initialization
-function initializeAdminFallback() {
-    console.log('📋 Using fallback data for admin dashboard');
-    // Your existing admin dashboard logic here
-}
-
-console.log('🚀 Admin API Service Loaded - Dashboard Backend Ready!');
+console.log('🎯 Product API Service Loaded - Backend Integration Ready!');
