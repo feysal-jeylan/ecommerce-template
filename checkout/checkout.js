@@ -474,8 +474,40 @@ class CheckoutManager {
                 // 3. Update inventory
                 await this.updateInventoryAfterOrder();
 
-                // 4. Save order
-                await this.saveOrderToStorage();
+                    // 4. Save order to backend
+    try {
+        const backendOrder = {
+            customer: {
+                email: this.orderData.shipping.email,
+                firstName: this.orderData.shipping.firstName,
+                lastName: this.orderData.shipping.lastName,
+                phone: this.orderData.shipping.phone
+            },
+            shipping: {
+                address: this.orderData.shipping.address,
+                city: this.orderData.shipping.city,
+                state: this.orderData.shipping.state,
+                zipCode: this.orderData.shipping.zipCode,
+                country: this.orderData.shipping.country
+            },
+            items: this.orderData.order.items,
+            total: this.orderData.order.total,
+            subtotal: this.orderData.order.subtotal,
+            shippingCost: this.orderData.order.shipping,
+            tax: this.orderData.order.tax,
+            paymentStatus: 'paid',
+            status: 'confirmed'
+        };
+
+        const orderResult = await window.advancedApi.createOrder(backendOrder);
+        
+        // Use backend order ID
+        this.orderData.order.orderId = orderResult.orderId || orderResult._id;
+        
+    } catch (error) {
+        console.warn('Backend order creation failed, using localStorage fallback');
+        await this.saveOrderToStorage();
+    }
 
                 // 5. Clear cart
                 saveCart([]);

@@ -55,6 +55,11 @@
     <button class="icon-btn" aria-label="Wishlist"><i class="far fa-heart" aria-hidden="true"></i></button>
     <button class="icon-btn" aria-label="Notifications"><i class="far fa-bell" aria-hidden="true"></i></button>
     <button class="icon-btn" aria-label="Profile"><i class="far fa-user" aria-hidden="true"></i></button>
+    <!-- ADD THIS BUTTON - Place near other header buttons -->
+<button class="icon-btn" id="login-btn" aria-label="Login">
+    <i class="fas fa-user"></i>
+</button>
+
   </div>
 </header>
 
@@ -284,6 +289,30 @@
     <!-- Recommendations will be dynamically inserted here -->
   </div>
 </div>
-  <script type="module" src="e-commerce.js"></script>
+
+<!-- ADD THIS MODAL - Place before closing </body> tag -->
+<div id="login-modal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <h2>Admin Login</h2>
+        <form id="login-form">
+            <div class="form-group">
+                <label for="login-email">Email:</label>
+                <input type="email" id="login-email" value="admin@swiftbuy.com" required>
+            </div>
+            <div class="form-group">
+                <label for="login-password">Password:</label>
+                <input type="password" id="login-password" value="admin123" required>
+            </div>
+            <button type="submit" class="btn-primary">Login</button>
+        </form>
+        <div id="login-message" style="margin-top: 15px;"></div>
+    </div>
+</div>
+
+  <script type="module" src="e-commerce.js">
+  </script>
+  <!-- Advanced API Integration -->
+<script src="advanced-api.js"></script>
 </body>
 </html>

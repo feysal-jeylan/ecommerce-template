@@ -43,10 +43,11 @@ let mockData = {
 };
 
 // Create initial mock data
+// Create initial mock data
 function createMockData() {
     console.log('🔄 Creating demo data...');
     
-    // Sample products
+    // Sample products - FIXED structure
     mockData.products = [
         {
             _id: '1',
@@ -54,38 +55,114 @@ function createMockData() {
             sku: 'AUDIO-001',
             price: 79.99,
             category: 'electronics',
-            image: 'https://via.placeholder.com/300x200?text=Headphones',
-            inventory: { stock: 25, lowStockThreshold: 5 },
-            rating: { average: 4.5, count: 120 },
+            image: '/images/headset transparent.png',
+            images: ['/images/headset transparent.png'],
+            inventory: { 
+                stock: 25, 
+                lowStockThreshold: 5,
+                reserved: 0
+            },
+            rating: { 
+                average: 4.5, 
+                count: 120 
+            },
             featured: true,
             visible: true,
-            createdAt: new Date()
+            description: 'Premium wireless headphones with active noise cancellation',
+            createdAt: new Date(),
+            updatedAt: new Date()
         },
         {
             _id: '2',
             name: 'Running Shoes',
             sku: 'SHOE-001',
             price: 129.99,
-            category: 'shoe',
-            image: 'https://via.placeholder.com/300x200?text=Shoes',
-            inventory: { stock: 3, lowStockThreshold: 5 },
-            rating: { average: 4.2, count: 85 },
+            category: 'shoes',
+            image: '/images/transparent shoe.png',
+            images: ['/images/transparent shoe.png'],
+            inventory: { 
+                stock: 3, 
+                lowStockThreshold: 5,
+                reserved: 0
+            },
+            rating: { 
+                average: 4.2, 
+                count: 85 
+            },
             featured: false,
             visible: true,
-            createdAt: new Date()
+            description: 'High-performance running shoes with breathable mesh',
+            createdAt: new Date(),
+            updatedAt: new Date()
         },
         {
             _id: '3',
-            name: 'Designer Sunglasses',
-            sku: 'EYE-001',
+            name: 'Smart Watch',
+            sku: 'WATCH-001', 
             price: 199.99,
-            category: 'sunglasses',
-            image: 'https://via.placeholder.com/300x200?text=Sunglasses',
-            inventory: { stock: 15, lowStockThreshold: 5 },
-            rating: { average: 4.7, count: 64 },
+            category: 'electronics',
+            image: '/images/transparent watch.png',
+            images: ['/images/transparent watch.png'],
+            inventory: { 
+                stock: 15, 
+                lowStockThreshold: 5,
+                reserved: 0
+            },
+            rating: { 
+                average: 4.7, 
+                count: 64 
+            },
             featured: true,
             visible: true,
-            createdAt: new Date()
+            description: 'Advanced smartwatch with health monitoring',
+            createdAt: new Date(),
+            updatedAt: new Date()
+        },
+        {
+            _id: '4',
+            name: 'Designer Sunglasses',
+            sku: 'EYE-001',
+            price: 149.99,
+            category: 'accessories',
+            image: '/images/sunglasses.png',
+            images: ['/images/sunglasses.png'],
+            inventory: { 
+                stock: 12, 
+                lowStockThreshold: 5,
+                reserved: 0
+            },
+            rating: { 
+                average: 4.3, 
+                count: 67 
+            },
+            featured: false,
+            visible: true,
+            description: 'Stylish polarized sunglasses with UV protection',
+            createdAt: new Date(),
+            updatedAt: new Date()
+        },
+        {
+            _id: '5',
+            name: 'Travel Backpack',
+            sku: 'BAG-001',
+            price: 79.99,
+            category: 'backpacks',
+            image: '/images/backpack.png',
+            images: ['/images/backpack.png'],
+            inventory: { 
+                stock: 8, 
+                lowStockThreshold: 5,
+                reserved: 0
+            },
+            rating: { 
+                average: 4.6, 
+                count: 156 
+            },
+            featured: true,
+            visible: true,
+            description: 'Durable smart backpack with USB charging port',
+            createdAt: new Date(),
+            updatedAt: new Date()
         }
     ];
 
@@ -113,7 +190,7 @@ function createMockData() {
                     name: 'Wireless Bluetooth Headphones',
                     price_cents: 7999,
                     quantity: 1,
-                    image: 'https://via.placeholder.com/300x200?text=Headphones'
+                    image: '/images/headset transparent.png'
                 }
             ],
             total: 79.99,
@@ -140,11 +217,14 @@ function createMockData() {
                     }
                 ]
             },
-            createdAt: new Date(Date.now() - 86400000 * 3)
+            createdAt: new Date(Date.now() - 86400000 * 3),
+            updatedAt: new Date()
         }
     ];
 
     console.log('✅ Demo data created successfully');
+    console.log(`📦 Products: ${mockData.products.length}`);
+    console.log(`📦 Orders: ${mockData.orders.length}`);
 }
 
 // Database Models (with fallback to mock data)
@@ -168,12 +248,30 @@ const createModelsWithFallback = () => {
 function createMockModels() {
     const mockModel = (collectionName) => {
         return {
-            find: (query = {}) => Promise.resolve(mockData[collectionName].filter(item => {
-                for (let key in query) {
-                    if (item[key] !== query[key]) return false;
-                }
-                return true;
-            })),
+            find: (query = {}) => {
+                console.log(`🔍 Mock ${collectionName}.find:`, query);
+                const items = mockData[collectionName] || [];
+                const filtered = items.filter(item => {
+                    for (let key in query) {
+                        if (key === 'visible' && item[key] !== query[key]) return false;
+                        if (key === 'category' && query[key] !== 'all' && item[key] !== query[key]) return false;
+                        if (key === '$or') {
+                            // Handle search queries
+                            const searchTerm = query[key][0].name?.$regex;
+                            if (searchTerm) {
+                                const regex = new RegExp(searchTerm, 'i');
+                                if (!regex.test(item.name) && 
+                                    !regex.test(item.description) && 
+                                    !regex.test(item.sku)) {
+                                    return false;
+                                }
+                            }
+                        }
+                    }
+                    return true;
+                });
+                return Promise.resolve(filtered);
+            },
             findOne: (query) => Promise.resolve(mockData[collectionName].find(item => {
                 for (let key in query) {
                     if (item[key] !== query[key]) return false;
@@ -182,7 +280,7 @@ function createMockModels() {
             })),
             findById: (id) => Promise.resolve(mockData[collectionName].find(item => item._id === id)),
             create: (data) => {
-                const newItem = { ...data, _id: Date.now().toString(), createdAt: new Date() };
+                const newItem = { ...data, _id: Date.now().toString(), createdAt: new Date(), updatedAt: new Date() };
                 mockData[collectionName].push(newItem);
                 return Promise.resolve(newItem);
             },
@@ -199,7 +297,16 @@ function createMockModels() {
                 }
                 return Promise.resolve(null);
             },
-            countDocuments: (query = {}) => Promise.resolve(mockData[collectionName].length),
+            countDocuments: (query = {}) => {
+                const items = mockData[collectionName] || [];
+                const filtered = items.filter(item => {
+                    for (let key in query) {
+                        if (item[key] !== query[key]) return false;
+                    }
+                    return true;
+                });
+                return Promise.resolve(filtered.length);
+            },
             deleteOne: (query) => {
                 const index = mockData[collectionName].findIndex(item => {
                     for (let key in query) {

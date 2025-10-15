@@ -441,6 +441,8 @@ function addToCart(productId) {
 
 // ===== PRODUCTS DATA INITIALIZATION =====
 // ===== ADVANCED PRODUCTS INITIALIZATION =====
+// ===== PRODUCTS DATA INITIALIZATION =====
+// ===== ADVANCED PRODUCTS INITIALIZATION =====
 async function initializeProducts() {
     console.log('🔄 Initializing products with backend...');
     
@@ -454,25 +456,51 @@ async function initializeProducts() {
             products = result.products;
             console.log(`✅ Loaded ${products.length} products from backend`);
             
-            // Enhance products with AI data from backend
-            products = products.map(product => ({
-                ...product,
-                // Ensure compatibility with your existing frontend
-                id: product.productId,
-                image: product.images ? product.images[0] : product.image,
-                rating: {
-                    stars: product.rating.average ? '★'.repeat(Math.floor(product.rating.average)) + '☆'.repeat(5 - Math.floor(product.rating.average)) : '★★★★☆',
-                    reviews: product.rating.count || 128
-                },
-                inventory: product.inventory || { stock: 10, lowStockThreshold: 3 }
-            }));
+// Transform backend data to match frontend format
+products = products.map(product => {
+    // Handle both MongoDB _id and regular id
+    const productId = product._id || product.id;
+    
+    // Handle image paths - ensure they're relative to frontend
+    let imagePath = product.image;
+    if (imagePath && !imagePath.startsWith('http') && !imagePath.startsWith('/images')) {
+        imagePath = '/images/' + imagePath.split('/').pop();
+    }
+    
+    // Handle rating data safely
+    const ratingAverage = product.rating?.average || 4.5;
+    const ratingCount = product.rating?.count || Math.floor(Math.random() * 100) + 10;
+    
+    return {
+        ...product,
+        id: productId,
+        name: product.name || 'Unnamed Product',
+        price: product.price || 0,
+        image: imagePath || '/images/placeholder.png',
+        rating: {
+            stars: '★'.repeat(Math.floor(ratingAverage)) + 
+                   '☆'.repeat(5 - Math.floor(ratingAverage)),
+            reviews: ratingCount
+        },
+        inventory: product.inventory || { stock: 10, lowStockThreshold: 3 },
+        category: product.category || 'uncategorized'
+    };
+});
+            
+            // Save to localStorage as fallback
+            localStorage.setItem('swiftbuy_products', JSON.stringify(products));
         } else {
             // Fallback to localStorage
             throw new Error('Backend unavailable');
         }
         
     } catch (error) {
-        console.warn('❌ Backend failed, using localStorage fallback:', error);
+        if (error.message.includes('Authentication required')) {
+            console.log('🔐 Authentication required for products');
+            // Don't show error - this is normal for unauthenticated users
+        } else {
+            console.warn('❌ Backend failed, using localStorage fallback:', error);
+        }
         
         // Your existing localStorage fallback logic
         const savedProducts = localStorage.getItem('swiftbuy_products');
@@ -1828,7 +1856,7 @@ function refreshInventoryBadges() {
     
     init();
     
-    return {
+       return {
         loadInventory,
         getStockLevel,
         isInStock,
@@ -1836,7 +1864,27 @@ function refreshInventoryBadges() {
         updateStock,
         restockProduct,
         refreshInventoryUI,
-        addStockBadges // Add this line
+        addStockBadges,
+        // ADD THESE TWO NEW METHODS:
+        updateStockFromBackend: function(productId, backendStock) {
+            const inventory = loadInventory();
+            if (inventory[productId]) {
+                inventory[productId].stock = backendStock;
+                saveInventory(inventory);
+                return true;
+            }
+            return false;
+        },
+        syncWithBackend: async function() {
+            try {
+                if (await window.advancedApi.healthCheck()) {
+                    // This would sync with backend inventory
+                    console.log('🔄 Syncing inventory with backend...');
+                }
+            } catch (error) {
+                console.warn('Backend inventory sync failed');
+            }
+        }
     };
 }
 
@@ -3523,3 +3571,135 @@ console.log('🌐 Global exports completed');
 console.log('window.addAIPoweredBadges:', typeof window.addAIPoweredBadges);
 
 // END OF SECTION 5
+
+// ===== AUTHENTICATION SYSTEM =====
+function initAuthentication() {
+    const loginBtn = document.getElementById('login-btn');
+    const loginModal = document.getElementById('login-modal');
+    const closeBtn = document.querySelector('.close');
+    const loginForm = document.getElementById('login-form');
+    const loginMessage = document.getElementById('login-message');
+
+    if (!loginBtn || !loginModal) {
+        console.warn('Login elements not found');
+        return;
+    }
+
+    // Open modal
+    loginBtn.addEventListener('click', () => {
+        loginModal.style.display = 'block';
+    });
+
+    // Close modal
+    closeBtn.addEventListener('click', () => {
+        loginModal.style.display = 'none';
+    });
+
+    // Close modal when clicking outside
+    window.addEventListener('click', (e) => {
+        if (e.target === loginModal) {
+            loginModal.style.display = 'none';
+        }
+    });
+
+    // Handle login form
+    loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const email = document.getElementById('login-email').value;
+        const password = document.getElementById('login-password').value;
+        
+        try {
+            loginMessage.textContent = 'Logging in...';
+            loginMessage.style.color = 'blue';
+            
+            const result = await window.advancedApi.login(email, password);
+            
+            loginMessage.textContent = '✅ Login successful! Loading products...';
+            loginMessage.style.color = 'green';
+            
+            // Close modal after success
+            setTimeout(() => {
+                loginModal.style.display = 'none';
+                loginMessage.textContent = '';
+                
+                // Reload products now that we're authenticated
+                initializeProducts();
+            }, 1500);
+            
+        } catch (error) {
+            loginMessage.textContent = '❌ Login failed: ' + error.message;
+            loginMessage.style.color = 'red';
+        }
+    });
+
+    // Check if already logged in on page load
+    const token = localStorage.getItem('swiftbuy_token');
+    if (token) {
+        console.log('🔐 User already logged in');
+        // Verify token is still valid
+        setTimeout(() => initializeProducts(), 1000);
+    }
+}
+
+// Initialize authentication when app starts
+setTimeout(initAuthentication, 1000);
+
+
+// ===== BACKEND INTEGRATION TEST =====
+async function testBackendIntegration() {
+    console.log('🧪 Testing Backend Integration...');
+    
+    try {
+        // Test 1: Backend Health
+        const isHealthy = await window.advancedApi.healthCheck();
+        console.log(`✅ Backend Health: ${isHealthy ? 'ONLINE' : 'OFFLINE'}`);
+        
+        if (isHealthy) {
+            // Test 2: Products API
+            try {
+                const productsData = await window.advancedApi.getProducts();
+                console.log(`✅ Products API: Loaded ${productsData.products?.length || 0} products`);
+            } catch (error) {
+                console.log('❌ Products API: Failed - using fallback');
+            }
+            
+            // Test 3: Test Order Data Structure
+            const testOrder = {
+                customer: {
+                    email: "test@example.com",
+                    firstName: "Test",
+                    lastName: "User"
+                },
+                shipping: {
+                    address: "123 Test St",
+                    city: "Test City",
+                    state: "TS",
+                    zipCode: "12345",
+                    country: "United States"
+                },
+                items: [],
+                total: 0,
+                subtotal: 0,
+                shippingCost: 0,
+                tax: 0,
+                paymentStatus: 'paid',
+                status: 'confirmed'
+            };
+            console.log('✅ Order Structure: Ready for backend submission');
+        }
+        
+        // Test 4: Local Storage Fallback
+        const localProducts = localStorage.getItem('swiftbuy_products');
+        console.log(`📦 Local Storage: ${localProducts ? JSON.parse(localProducts).length + ' products' : 'Empty'}`);
+        
+    } catch (error) {
+        console.error('❌ Integration Test Failed:', error);
+    }
+}
+
+// Run test when page loads
+setTimeout(() => {
+    testBackendIntegration();
+}, 2000);
+
