@@ -1,0 +1,13 @@
+# VS Code
+.vscode/
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Backend folders (if any)
+backend/
+checkout/
+
+# Logs
+*.log
