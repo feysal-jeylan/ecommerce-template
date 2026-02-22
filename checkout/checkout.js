@@ -1,5 +1,5 @@
 // ===== CHECKOUT ADVANCED CORE =====
-import { loadCart, saveCart, executeAtomicOperation } from '../cartModule.js';
+import { loadCart, saveCart, executeAtomicOperation } from '../js/cartModule.js';
 import { validateAddress } from './address-validator.js';
 import { processPayment } from './payment-processor.js';
 
@@ -120,7 +120,7 @@ class CheckoutManager {
     async getInventoryManager() {
         try {
             // Dynamic import to avoid circular dependencies
-            const { inventoryManager } = await import('../e-commerce.js');
+            const { inventoryManager } = await import('../js/e-commerce.js');
             return inventoryManager;
         } catch {
             return null;
@@ -474,40 +474,8 @@ class CheckoutManager {
                 // 3. Update inventory
                 await this.updateInventoryAfterOrder();
 
-                    // 4. Save order to backend
-    try {
-        const backendOrder = {
-            customer: {
-                email: this.orderData.shipping.email,
-                firstName: this.orderData.shipping.firstName,
-                lastName: this.orderData.shipping.lastName,
-                phone: this.orderData.shipping.phone
-            },
-            shipping: {
-                address: this.orderData.shipping.address,
-                city: this.orderData.shipping.city,
-                state: this.orderData.shipping.state,
-                zipCode: this.orderData.shipping.zipCode,
-                country: this.orderData.shipping.country
-            },
-            items: this.orderData.order.items,
-            total: this.orderData.order.total,
-            subtotal: this.orderData.order.subtotal,
-            shippingCost: this.orderData.order.shipping,
-            tax: this.orderData.order.tax,
-            paymentStatus: 'paid',
-            status: 'confirmed'
-        };
-
-        const orderResult = await window.advancedApi.createOrder(backendOrder);
-        
-        // Use backend order ID
-        this.orderData.order.orderId = orderResult.orderId || orderResult._id;
-        
-    } catch (error) {
-        console.warn('Backend order creation failed, using localStorage fallback');
-        await this.saveOrderToStorage();
-    }
+                // 4. Save order
+                await this.saveOrderToStorage();
 
                 // 5. Clear cart
                 saveCart([]);
@@ -780,7 +748,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Ensure cart has items
     const cart = loadCart();
     if (cart.length === 0) {
-        window.location.href = '../e-commerce.html';
+        window.location.href = '../index.html';
         return;
     }
 
