@@ -1730,10 +1730,10 @@ function refreshInventoryBadges() {
     
     // Create inventory dashboard
     function createInventoryDashboard() {
-        // Inventory dashboard removed from storefront — admin-only feature
-        // Stock badges on product cards are still shown via addStockBadges()
-        console.log('📦 Inventory dashboard hidden on storefront (admin-only)');
-    }
+    // Inventory dashboard removed from storefront - admin only
+    return;
+}
+
     
     // Global functions for dashboard
 
