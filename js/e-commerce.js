@@ -495,6 +495,8 @@ async function initializeProducts() {
     return true;
 }
 
+// hello  this is just my text to add it to github
+
 async function loadFallbackProducts() {
     console.log('🔄 Loading fallback products...');
     
