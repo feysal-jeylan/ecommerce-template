@@ -695,6 +695,13 @@ navigateDateRange(direction) {
 loadOrders() {
     this.orders = JSON.parse(localStorage.getItem('swiftbuy_orders') || '[]');
     
+    // === SEED MOCK DATA if no orders exist ===
+    if (this.orders.length === 0) {
+        console.log('📊 Seeding demo orders for dashboard...');
+        this.orders = this.generateMockOrders();
+        localStorage.setItem('swiftbuy_orders', JSON.stringify(this.orders));
+    }
+    
     // Initialize tracking for orders that don't have it
     this.orders.forEach(order => {
         if (!order.tracking) {
@@ -714,6 +721,96 @@ loadOrders() {
     });
     
     console.log('📦 Loaded orders:', this.orders.length);
+}
+
+
+generateMockOrders() {
+    const firstNames = ['Emma', 'Liam', 'Olivia', 'Noah', 'Ava', 'William', 'Sophia', 'James', 'Isabella', 'Oliver', 'Mia', 'Benjamin', 'Charlotte', 'Elijah', 'Amelia', 'Lucas', 'Harper', 'Mason'];
+    const lastNames = ['Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez', 'Anderson', 'Taylor', 'Thomas', 'Moore', 'Jackson', 'Martin', 'Lee', 'Clark'];
+    const cities = ['New York', 'Los Angeles', 'Chicago', 'Houston', 'Phoenix', 'Philadelphia', 'San Antonio', 'San Diego', 'Dallas', 'San Jose'];
+    const states = ['NY', 'CA', 'IL', 'TX', 'AZ', 'PA', 'TX', 'CA', 'TX', 'CA'];
+    const statuses = ['ordered', 'confirmed', 'shipped', 'delivered', 'delivered', 'delivered'];
+    const shippingMethods = ['standard', 'express', 'overnight'];
+
+    const productPool = [
+        { id: '101', name: 'Wireless Bluetooth Headphones', price_cents: 12999, image: 'images/headset transparent.png' },
+        { id: '102', name: 'Running Shoes', price_cents: 8999, image: 'images/transparent shoe.png' },
+        { id: '103', name: 'Smart Watch', price_cents: 19999, image: 'images/transparent watch.png' },
+        { id: '104', name: 'Designer Sunglasses', price_cents: 14999, image: 'images/sunglasses.png' },
+        { id: '105', name: 'Travel Backpack', price_cents: 7999, image: 'images/backpack.png' }
+    ];
+
+    const orders = [];
+    const now = Date.now();
+
+    for (let i = 0; i < 18; i++) {
+        const daysAgo = Math.floor(Math.random() * 30);
+        const timestamp = new Date(now - daysAgo * 86400000).toISOString();
+        const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
+        const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
+        const cityIndex = Math.floor(Math.random() * cities.length);
+        const status = statuses[Math.floor(Math.random() * statuses.length)];
+
+        // Random 1-3 items per order
+        const itemCount = Math.floor(Math.random() * 3) + 1;
+        const items = [];
+        const usedProducts = new Set();
+        
+        for (let j = 0; j < itemCount; j++) {
+            let product;
+            do {
+                product = productPool[Math.floor(Math.random() * productPool.length)];
+            } while (usedProducts.has(product.id) && usedProducts.size < productPool.length);
+            usedProducts.add(product.id);
+            
+            items.push({
+                ...product,
+                quantity: Math.floor(Math.random() * 3) + 1
+            });
+        }
+
+        const subtotal = items.reduce((sum, item) => sum + (item.price_cents * item.quantity), 0);
+        const shipping = subtotal > 10000 ? 0 : 999;
+        const tax = Math.round(subtotal * 0.08);
+        const total = (subtotal + shipping + tax) / 100;
+
+        orders.push({
+            order: {
+                orderId: 'SWIFT' + (now - daysAgo * 86400000) + Math.random().toString(36).substr(2, 5).toUpperCase(),
+                items: items,
+                subtotal: subtotal,
+                shipping: shipping,
+                tax: tax,
+                total: total,
+                timestamp: timestamp
+            },
+            shipping: {
+                firstName: firstName,
+                lastName: lastName,
+                email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}@email.com`,
+                phone: `(${Math.floor(Math.random() * 900) + 100}) ${Math.floor(Math.random() * 900) + 100}-${Math.floor(Math.random() * 9000) + 1000}`,
+                address: `${Math.floor(Math.random() * 9000) + 100} ${['Oak', 'Maple', 'Pine', 'Cedar', 'Elm'][Math.floor(Math.random() * 5)]} ${['St', 'Ave', 'Blvd', 'Dr'][Math.floor(Math.random() * 4)]}`,
+                city: cities[cityIndex],
+                state: states[cityIndex],
+                zipCode: String(Math.floor(Math.random() * 90000) + 10000),
+                shippingMethod: shippingMethods[Math.floor(Math.random() * shippingMethods.length)]
+            },
+            payment: {
+                method: 'card',
+                last4: String(Math.floor(Math.random() * 9000) + 1000)
+            },
+            tracking: {
+                status: status,
+                lastUpdated: timestamp,
+                history: [
+                    { status: 'ordered', timestamp: timestamp, note: 'Order placed', updatedBy: 'System' }
+                ]
+            }
+        });
+    }
+
+    console.log(`✅ Generated ${orders.length} mock orders`);
+    return orders;
 }
 
 loadProducts() {
