@@ -1718,82 +1718,12 @@ function refreshInventoryBadges() {
     
     // Create inventory dashboard
     function createInventoryDashboard() {
-        const inventory = loadInventory();
-        const dashboard = document.createElement('div');
-        dashboard.className = 'inventory-dashboard';
-        dashboard.innerHTML = `
-            <div class="inventory-header">
-                <h3>Inventory Management</h3>
-                <button class="btn-restock-all" onclick="window.restockAllProducts()">
-                    <i class="fas fa-boxes"></i> Restock All
-                </button>
-            </div>
-            <div class="inventory-stats">
-                <div class="inventory-stat">
-                    <h4>Total Products</h4>
-                    <div class="stat-value">${products.length}</div>
-                </div>
-                <div class="inventory-stat">
-                    <h4>In Stock</h4>
-                    <div class="stat-value in-stock">${Object.values(inventory).filter(item => item.stock > 0).length}</div>
-                </div>
-                <div class="inventory-stat">
-                    <h4>Low Stock</h4>
-                    <div class="stat-value low-stock">${Object.values(inventory).filter(item => item.stock > 0 && item.stock <= item.lowStockThreshold).length}</div>
-                </div>
-                <div class="inventory-stat">
-                    <h4>Out of Stock</h4>
-                    <div class="stat-value out-of-stock">${Object.values(inventory).filter(item => item.stock === 0).length}</div>
-                </div>
-            </div>
-            <div class="inventory-items">
-                ${products.map(product => {
-                    const item = inventory[product.id];
-                    const stockPercent = Math.min(100, (item.stock / (item.lowStockThreshold * 3)) * 100);
-                    const progressClass = item.stock === 0 ? 'low' : item.stock <= item.lowStockThreshold ? 'medium' : 'high';
-                    return `
-                        <div class="inventory-item">
-                            <span class="inventory-item-name">${product.name}</span>
-                            <div class="inventory-item-stock">
-                                <div class="stock-indicator">
-                                    <div class="stock-progress ${progressClass}" style="width: ${stockPercent}%"></div>
-                                </div>
-                                <span class="stock-quantity ${item.stock === 0 ? 'out-of-stock' : item.stock <= item.lowStockThreshold ? 'low-stock' : 'in-stock'}">
-                                    ${item.stock}
-                                </span>
-                                <button class="btn-restock" onclick="window.restockProduct('${product.id}', 10)" title="Add 10 units">
-                                    <i class="fas fa-plus"></i>
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                }).join('')}
-            </div>
-        `;
-        
-        // Add to page
-        const mainElement = document.querySelector('main');
-        if (mainElement) {
-            mainElement.insertBefore(dashboard, mainElement.firstChild);
-        }
+        // Inventory dashboard removed from storefront — admin-only feature
+        // Stock badges on product cards are still shown via addStockBadges()
+        console.log('📦 Inventory dashboard hidden on storefront (admin-only)');
     }
     
     // Global functions for dashboard
-    window.restockProduct = function(productId, quantity) {
-        if (restockProduct(productId, quantity)) {
-            showToast(`Restocked ${quantity} units of ${products.find(p => p.id === productId).name}`);
-            setTimeout(refreshInventoryUI, 100);
-        }
-    };
-
-    window.restockAllProducts = function() {
-        const inventory = loadInventory();
-        Object.keys(inventory).forEach(productId => {
-            restockProduct(productId, 15);
-        });
-        showToast('All products restocked!');
-        setTimeout(refreshInventoryUI, 100);
-    };
 
     // Refresh inventory UI
     function refreshInventoryUI() {

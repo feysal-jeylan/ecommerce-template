@@ -21,7 +21,7 @@ class OrderConfirmation {
 
     loadOrderDetails() {
         if (!this.orderId) {
-            this.showError('No order ID found in URL');
+            this.showEmptyState();
             return;
         }
 
@@ -33,13 +33,53 @@ class OrderConfirmation {
                 this.updateConfirmationDetails();
                 this.updateTrackingLink();
             } else {
-                this.showError('Order not found');
+                this.showEmptyState();
             }
         } catch (error) {
             console.error('Error loading order details:', error);
-            this.showError('Error loading order details');
+            this.showEmptyState();
         }
     }
+
+    showEmptyState() {
+        // Hide the default "Loading..." content
+        const orderSummary = document.querySelector('.order-summary');
+        const timeline = document.querySelector('.order-timeline');
+        const confirmationIcon = document.querySelector('.confirmation-icon');
+        const confirmationMessage = document.querySelector('.confirmation-message');
+        const confirmationActions = document.querySelector('.confirmation-actions');
+        const confirmationNote = document.querySelector('.confirmation-note');
+        const h1 = document.querySelector('.confirmation-card h1');
+
+        // Update heading and message
+        if (h1) h1.textContent = 'No Recent Order Found';
+        if (confirmationIcon) {
+            confirmationIcon.innerHTML = '<i class="fas fa-shopping-bag" style="color: #6b7280;"></i>';
+        }
+        if (confirmationMessage) {
+            confirmationMessage.textContent = 'It looks like you haven\'t placed an order yet, or the order details are no longer available.';
+        }
+
+        // Hide order-specific sections
+        if (orderSummary) orderSummary.style.display = 'none';
+        if (timeline) timeline.style.display = 'none';
+        if (confirmationNote) confirmationNote.style.display = 'none';
+
+        // Replace actions with "Return to Store" button
+        if (confirmationActions) {
+            confirmationActions.innerHTML = `
+                <a href="../index.html" class="btn-primary">
+                    <i class="fas fa-shopping-bag"></i>
+                    Return to Store
+                </a>
+                <a href="../order-tracking.html" class="btn-secondary">
+                    <i class="fas fa-search"></i>
+                    Track an Existing Order
+                </a>
+            `;
+        }
+    }
+
 
     updateConfirmationDetails() {
         // Update order ID
