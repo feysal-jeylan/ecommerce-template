@@ -708,10 +708,78 @@ class CheckoutManager {
         this.showToast(message, 'success');
     }
 
-    showToast(message, type = 'info') {
-        // Implementation for toast notifications
-        console.log(`[${type.toUpperCase()}] ${message}`);
-        // You can integrate with your existing toast system
+    howToast(message, type = 'info') {
+        // Remove existing toasts
+        document.querySelectorAll('.checkout-toast').forEach(t => t.remove());
+
+        const toast = document.createElement('div');
+        toast.className = `checkout-toast checkout-toast-${type}`;
+
+        const icons = {
+            success: 'check-circle',
+            error: 'exclamation-triangle',
+            warning: 'exclamation-circle',
+            info: 'info-circle'
+        };
+
+        const colors = {
+            success: { bg: '#10b981', border: '#059669' },
+            error: { bg: '#ef4444', border: '#dc2626' },
+            warning: { bg: '#f59e0b', border: '#d97706' },
+            info: { bg: '#3b82f6', border: '#2563eb' }
+        };
+
+        const colorSet = colors[type] || colors.info;
+
+        toast.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: ${colorSet.bg};
+            color: white;
+            padding: 14px 20px;
+            border-radius: 10px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+            font-weight: 500;
+            max-width: 400px;
+            animation: toastSlideIn 0.3s ease-out;
+            border-left: 4px solid ${colorSet.border};
+        `;
+
+        toast.innerHTML = `
+            <i class="fas fa-${icons[type] || 'info-circle'}" style="font-size: 18px;"></i>
+            <span>${message}</span>
+        `;
+
+        // Add animation keyframes if not already added
+        if (!document.querySelector('#checkout-toast-styles')) {
+            const style = document.createElement('style');
+            style.id = 'checkout-toast-styles';
+            style.textContent = `
+                @keyframes toastSlideIn {
+                    from { transform: translateX(100%); opacity: 0; }
+                    to { transform: translateX(0); opacity: 1; }
+                }
+                @keyframes toastSlideOut {
+                    from { transform: translateX(0); opacity: 1; }
+                    to { transform: translateX(100%); opacity: 0; }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
+        document.body.appendChild(toast);
+
+        // Auto-dismiss after 3 seconds
+        setTimeout(() => {
+            toast.style.animation = 'toastSlideOut 0.3s ease-in forwards';
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
     }
 
     updateElement(id, content) {
